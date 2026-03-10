@@ -5,313 +5,307 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <meta name="theme-color" content="#f97316"/>
 <title>JEE Command Center</title>
-<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#030712;color:#e5e7eb;min-height:100vh}
+body{font-family:system-ui,sans-serif;background:#030712;color:#e5e7eb;min-height:100vh}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
 button,input,select{font-family:inherit}
 input:focus,select:focus{outline:none}
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-thumb{background:#374151;border-radius:2px}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#374151;border-radius:2px}
+#ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#030712;z-index:9999}
+.sp{width:36px;height:36px;border:3px solid rgba(34,211,238,.2);border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:14px}
+#lm{font-size:12px;color:#4b5563;font-family:monospace;letter-spacing:1px;text-align:center;padding:0 20px}
+#er{display:none;position:fixed;inset:0;background:#030712;padding:28px;z-index:9999}
+#er h2{color:#ef4444;margin-bottom:12px}#er p{color:#9ca3af;font-size:13px;line-height:1.8;margin-bottom:8px}
+#er button{background:#22d3ee;border:none;border-radius:8px;padding:14px;color:#000;font-weight:700;cursor:pointer;width:100%;margin-top:12px;font-size:14px}
 </style>
 </head>
 <body>
+<div id="ld"><div class="sp"></div><div id="lm">LOADING JEE COMMAND CENTER...</div></div>
+<div id="er"><h2>⚠ Load Failed</h2><p id="em">React could not be loaded.</p><p>Fixes to try:</p><p>• Check internet connection<br>• Disable VPN or ad-blocker<br>• Try Chrome browser<br>• Refresh the page</p><button onclick="location.reload()">🔄 Tap to Refresh</button></div>
 <div id="root"></div>
-<script>
-'use strict';
-const e = React.createElement;
-const {useState,useEffect,useRef,Fragment} = React;
 
-// ── Storage ──
-const LS = {
-  get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null } catch { return null } },
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+<script id="appcode" type="text/plain">
+const {useState,useEffect,useRef}=React;
+
+const LS={
+  get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 };
-const K = {p:'jcc_p',m:'jcc_m',ch:'jcc_ch',mk:'jcc_mk',d:'jcc_d',tk:'jcc_t',s:'jcc_s',ob:'jcc_ob',dk:'jcc_dk'};
+const K={p:"jcc_p",m:"jcc_m",ch:"jcc_ch",mk:"jcc_mk",d:"jcc_d",tk:"jcc_t",s:"jcc_s",ob:"jcc_ob",dk:"jcc_dk"};
 
-// ── Theme ──
-const TH = dark => ({
-  bg:  dark?'#030712':'#f0f4f8',
-  bg2: dark?'#0a0e1a':'#ffffff',
-  bg3: dark?'#111827':'#e8edf5',
-  bd:  dark?'#1f2937':'#d1dae8',
-  bd2: dark?'#374151':'#b0bdd0',
-  tx:  dark?'#e5e7eb':'#111827',
-  t2:  dark?'#9ca3af':'#4b5563',
-  t3:  dark?'#4b5563':'#9ca3af',
-  ac:'#f97316', cy:'#22d3ee', pu:'#a78bfa', gr:'#4ade80', re:'#ef4444', dark
+const TH=dark=>({
+  bg:dark?"#030712":"#f0f4f8",bg2:dark?"#0a0e1a":"#ffffff",bg3:dark?"#111827":"#e8edf5",
+  bd:dark?"#1f2937":"#d1dae8",bd2:dark?"#374151":"#b0bdd0",
+  tx:dark?"#e5e7eb":"#111827",t2:dark?"#9ca3af":"#4b5563",t3:dark?"#4b5563":"#9ca3af",
+  ac:"#f97316",cy:"#22d3ee",pu:"#a78bfa",gr:"#4ade80",re:"#ef4444",dark
 });
 
-// ── PYQ Bank ──
-const PYQ = {
-  'Mechanics':[
-    {q:'Car (1000kg) at 20m/s stops in 40m. Retarding force?',opts:['5000 N','10000 N','2500 N','20000 N'],ans:0,exp:'a=v²/2s=5m/s² → F=5000N'},
-    {q:'Ball thrown up 20m/s from 60m tower. Time to ground (g=10)?',opts:['6 s','4 s','2 s','8 s'],ans:0,exp:'-60=20t-5t² → t=6s'},
-    {q:'10kg+5kg blocks. Force 45N. Acceleration?',opts:['3 m/s²','4.5 m/s²','9 m/s²','1.5 m/s²'],ans:0,exp:'a=45/15=3m/s²'},
+const PYQ={
+  Mechanics:[
+    {q:"Car (1000kg) at 20m/s stops in 40m. Retarding force?",opts:["5000 N","10000 N","2500 N","20000 N"],ans:0,exp:"a=v²/2s=5m/s² → F=5000N"},
+    {q:"Ball thrown up 20m/s from 60m tower. Time to ground (g=10)?",opts:["6 s","4 s","2 s","8 s"],ans:0,exp:"-60=20t-5t² → t=6s"},
+    {q:"Blocks 10kg+5kg. Force 45N. Acceleration?",opts:["3 m/s²","4.5 m/s²","9 m/s²","1.5 m/s²"],ans:0,exp:"a=45/15=3m/s²"},
   ],
-  'Electrostatics':[
-    {q:'Charge Q at corner of cube. Flux through cube?',opts:['Q/8ε₀','Q/ε₀','Q/4ε₀','Q/6ε₀'],ans:0,exp:'8 cubes share corner → Q/8ε₀'},
-    {q:'Energy in 2μF capacitor at 100V?',opts:['0.01 J','0.02 J','200 J','0.1 J'],ans:0,exp:'U=½CV²=0.01J'},
+  Electrostatics:[
+    {q:"Charge Q at corner of cube. Flux through cube?",opts:["Q/8ε₀","Q/ε₀","Q/4ε₀","Q/6ε₀"],ans:0,exp:"8 cubes share corner → Q/8ε₀"},
+    {q:"Energy in 2μF capacitor at 100V?",opts:["0.01 J","0.02 J","200 J","0.1 J"],ans:0,exp:"U=½CV²=0.01J"},
   ],
-  'Thermodynamics':[
-    {q:'Carnot engine 500K to 300K. Efficiency?',opts:['40%','60%','20%','80%'],ans:0,exp:'η=1-300/500=40%'},
-    {q:'Isothermal work 2L→4L at 300K (1mol)?',opts:['1728 J','2494 J','864 J','3456 J'],ans:0,exp:'W=RT·ln2=1728J'},
+  Thermodynamics:[
+    {q:"Carnot engine 500K to 300K. Efficiency?",opts:["40%","60%","20%","80%"],ans:0,exp:"η=1-300/500=40%"},
+    {q:"Isothermal work 2L to 4L at 300K (1mol)?",opts:["1728 J","2494 J","864 J","3456 J"],ans:0,exp:"W=RT·ln2=1728J"},
   ],
-  'Modern Physics':[
-    {q:'Half-life 20y. Fraction left after 60y?',opts:['1/8','1/4','1/6','1/16'],ans:0,exp:'3 half-lives → 1/8'},
-    {q:'Photon energy at λ=6000Å?',opts:['3.3×10⁻¹⁹J','6.6×10⁻¹⁹J','1.65×10⁻¹⁹J','2.2×10⁻¹⁹J'],ans:0,exp:'E=hc/λ=3.3×10⁻¹⁹J'},
+  "Modern Physics":[
+    {q:"Half-life 20y. Fraction left after 60y?",opts:["1/8","1/4","1/6","1/16"],ans:0,exp:"3 half-lives → 1/8"},
+    {q:"Photon energy at λ=6000Å?",opts:["3.3×10⁻¹⁹J","6.6×10⁻¹⁹J","1.65×10⁻¹⁹J","2.2×10⁻¹⁹J"],ans:0,exp:"E=hc/λ=3.3×10⁻¹⁹J"},
   ],
-  'Waves':[{q:'f=100Hz, v=200m/s. Wavelength?',opts:['2m','0.5m','4m','1m'],ans:0,exp:'λ=v/f=2m'}],
-  'Optics':[{q:'Critical angle=30°. Refractive index?',opts:['2.0','1.5','1.73','1.41'],ans:0,exp:'n=1/sin30°=2'}],
-  'Calculus':[
-    {q:'∫₀¹ x·eˣ dx = ?',opts:['1','e-1','e','e+1'],ans:0,exp:'IBP gives 1'},
-    {q:'d/dx[tan⁻¹x] = ?',opts:['1/(1+x²)','1/(1-x²)','-1/(1+x²)','1/√(1-x²)'],ans:0,exp:'Standard: 1/(1+x²)'},
-    {q:'lim(x→0) sinx/x = ?',opts:['1','0','∞','-1'],ans:0,exp:'Fundamental limit = 1'},
+  Waves:[{q:"f=100Hz, v=200m/s. Wavelength?",opts:["2m","0.5m","4m","1m"],ans:0,exp:"λ=v/f=2m"}],
+  Optics:[{q:"Critical angle=30°. Refractive index?",opts:["2.0","1.5","1.73","1.41"],ans:0,exp:"n=1/sin30°=2"}],
+  Calculus:[
+    {q:"∫₀¹ x·eˣ dx = ?",opts:["1","e-1","e","e+1"],ans:0,exp:"IBP gives 1"},
+    {q:"d/dx[tan⁻¹x] = ?",opts:["1/(1+x²)","1/(1-x²)","-1/(1+x²)","1/√(1-x²)"],ans:0,exp:"Standard: 1/(1+x²)"},
+    {q:"lim(x→0) sinx/x = ?",opts:["1","0","∞","-1"],ans:0,exp:"Fundamental limit = 1"},
   ],
-  'Algebra':[
-    {q:'Sum & product of roots of x²-5x+6=0?',opts:['5 and 6','-5 and 6','5 and -6','-5 and -6'],ans:0,exp:'Vieta: sum=5, product=6'},
-    {q:'ⁿC₀+ⁿC₁+...+ⁿCₙ = ?',opts:['2ⁿ','n!','2n','n²'],ans:0,exp:'(1+1)ⁿ=2ⁿ'},
+  Algebra:[
+    {q:"Sum and product of roots of x²-5x+6=0?",opts:["5 and 6","-5 and 6","5 and -6","-5 and -6"],ans:0,exp:"Vieta: sum=5, product=6"},
+    {q:"ⁿC₀+ⁿC₁+...+ⁿCₙ = ?",opts:["2ⁿ","n!","2n","n²"],ans:0,exp:"(1+1)ⁿ=2ⁿ"},
   ],
-  'Probability':[
-    {q:'Fair die. P(number > 4)?',opts:['1/3','1/2','2/3','1/6'],ans:0,exp:'{5,6} → 2/6=1/3'},
-    {q:'P(A)=0.6,P(B)=0.4,P(A∩B)=0.2. P(A∪B)?',opts:['0.8','0.6','1.0','0.4'],ans:0,exp:'0.6+0.4-0.2=0.8'},
+  Probability:[
+    {q:"Fair die. P(number > 4)?",opts:["1/3","1/2","2/3","1/6"],ans:0,exp:"{5,6} → 2/6=1/3"},
+    {q:"P(A)=0.6,P(B)=0.4,P(A∩B)=0.2. P(A∪B)?",opts:["0.8","0.6","1.0","0.4"],ans:0,exp:"0.6+0.4-0.2=0.8"},
   ],
-  'Trigonometry':[{q:'sin²30°+cos²60°+tan²45° = ?',opts:['3/2','1','2','5/4'],ans:0,exp:'1/4+1/4+1=3/2'}],
-  'Vectors':[{q:'|A|=3,|B|=4,|A+B|=5. |A×B|?',opts:['12','7','25','0'],ans:0,exp:'A⊥B → 3×4=12'}],
-  'Organic':[
-    {q:'Primary alcohol → aldehyde only?',opts:['PCC/CH₂Cl₂','KMnO₄','K₂Cr₂O₇','HNO₃'],ans:0,exp:'PCC stops at aldehyde'},
-    {q:'HBr+CH₃CH=CH₂ (Markovnikov). Product?',opts:['CH₃CHBrCH₃','CH₃CH₂CH₂Br','BrCH₂CH₂CH₃','CH₂BrCH=CH₂'],ans:0,exp:'H to terminal C'},
+  Trigonometry:[{q:"sin²30°+cos²60°+tan²45° = ?",opts:["3/2","1","2","5/4"],ans:0,exp:"1/4+1/4+1=3/2"}],
+  Vectors:[{q:"|A|=3,|B|=4,|A+B|=5. |A×B|?",opts:["12","7","25","0"],ans:0,exp:"A⊥B → 3×4=12"}],
+  Organic:[
+    {q:"Primary alcohol to aldehyde only (no over-oxidation)?",opts:["PCC/CH₂Cl₂","KMnO₄","K₂Cr₂O₇","HNO₃"],ans:0,exp:"PCC stops at aldehyde"},
+    {q:"HBr + CH₃CH=CH₂ (Markovnikov). Product?",opts:["CH₃CHBrCH₃","CH₃CH₂CH₂Br","BrCH₂CH₂CH₃","CH₂BrCH=CH₂"],ans:0,exp:"H to terminal C → CH₃CHBrCH₃"},
   ],
-  'Physical':[
-    {q:'pH of 0.01M NaOH?',opts:['12','2','7','11'],ans:0,exp:'pOH=2 → pH=12'},
-    {q:'Spontaneous at ALL T when?',opts:['ΔH<0 and ΔS>0','ΔH>0 and ΔS<0','ΔH<0 and ΔS<0','ΔH>0 and ΔS>0'],ans:0,exp:'ΔG always negative'},
+  Physical:[
+    {q:"pH of 0.01M NaOH?",opts:["12","2","7","11"],ans:0,exp:"pOH=2 → pH=12"},
+    {q:"Spontaneous at ALL temperatures when?",opts:["ΔH<0 and ΔS>0","ΔH>0 and ΔS<0","ΔH<0 and ΔS<0","ΔH>0 and ΔS>0"],ans:0,exp:"ΔG always negative"},
   ],
-  'Electrochemistry':[{q:'Zn|Zn²⁺||Cu²⁺|Cu. E°cell?',opts:['1.10V','-1.10V','0.42V','-0.42V'],ans:0,exp:'0.34-(-0.76)=1.10V'}],
-  'Matrices':[{q:'A=[[1,2],[3,4]]. det(A)?',opts:['-2','2','-10','10'],ans:0,exp:'4-6=-2'}],
-  'Equilibrium':[{q:'PCl₅⇌PCl₃+Cl₂, Kc=0.04. α≈?',opts:['0.2','0.04','0.5','0.1'],ans:0,exp:'α²=0.04 → α=0.2'}],
-  'Coordinate Geometry':[{q:'x²+y²-4x-6y+9=0. Centre & radius?',opts:['(2,3) r=2','(2,3) r=3','(-2,-3) r=2','(4,6) r=9'],ans:0,exp:'r=√(4+9-9)=2'}],
+  Electrochemistry:[{q:"Zn|Zn²⁺||Cu²⁺|Cu. E°cell?",opts:["1.10V","-1.10V","0.42V","-0.42V"],ans:0,exp:"0.34-(-0.76)=1.10V"}],
+  Matrices:[{q:"A=[[1,2],[3,4]]. det(A)?",opts:["-2","2","-10","10"],ans:0,exp:"4-6=-2"}],
+  Equilibrium:[{q:"PCl₅⇌PCl₃+Cl₂, Kc=0.04. α≈?",opts:["0.2","0.04","0.5","0.1"],ans:0,exp:"α²=0.04 → α=0.2"}],
+  "Coordinate Geometry":[{q:"x²+y²-4x-6y+9=0. Centre & radius?",opts:["(2,3) r=2","(2,3) r=3","(-2,-3) r=2","(4,6) r=9"],ans:0,exp:"r=√(4+9-9)=2"}],
 };
 
-const ALL_CH = {
-  Physics:['Mechanics','Kinematics','Thermodynamics','Waves','Electrostatics','Magnetism','Optics','Modern Physics','Current Electricity','Semiconductors'],
-  Chemistry:['Organic','Inorganic','Physical','Electrochemistry','Equilibrium','Chemical Kinetics','Coordination Compounds','Surface Chemistry'],
-  Mathematics:['Calculus','Algebra','Coordinate Geometry','Probability','Trigonometry','Matrices','Vectors','3D Geometry','Statistics'],
+const ALL_CH={
+  Physics:["Mechanics","Kinematics","Thermodynamics","Waves","Electrostatics","Magnetism","Optics","Modern Physics","Current Electricity","Semiconductors"],
+  Chemistry:["Organic","Inorganic","Physical","Electrochemistry","Equilibrium","Chemical Kinetics","Coordination Compounds","Surface Chemistry"],
+  Mathematics:["Calculus","Algebra","Coordinate Geometry","Probability","Trigonometry","Matrices","Vectors","3D Geometry","Statistics"],
 };
-const SC = {Physics:'#f97316',Chemistry:'#22d3ee',Mathematics:'#a78bfa'};
-const SI = {Physics:'⚡',Chemistry:'🧪',Mathematics:'∑'};
-const JEE = new Date('2026-04-13T09:00:00');
+const SC={Physics:"#f97316",Chemistry:"#22d3ee",Mathematics:"#a78bfa"};
+const SI={Physics:"⚡",Chemistry:"🧪",Mathematics:"∑"};
+const JEE=new Date("2026-04-13T09:00:00");
+const avgO=o=>{const v=Object.values(o||{}).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0};
+const tod=()=>new Date().toISOString().slice(0,10);
+const greet=()=>{const h=new Date().getHours();return h<12?"Good morning":h<17?"Good afternoon":"Good evening"};
+function getCD(){const d=JEE-new Date();if(d<=0)return{D:0,H:0,M:0,S:0};return{D:Math.floor(d/86400000),H:Math.floor(d%86400000/3600000),M:Math.floor(d%3600000/60000),S:Math.floor(d%60000/1000)};}
+const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(f);});
 
-const avgO = o => { const v = Object.values(o||{}).filter(x=>x>0); return v.length ? Math.round(v.reduce((a,b)=>a+b)/v.length) : 0; };
-const tod = () => new Date().toISOString().slice(0,10);
-const greet = () => { const h = new Date().getHours(); return h<12?'Good morning':h<17?'Good afternoon':'Good evening'; };
-const getCD = () => { const d=JEE-new Date(); if(d<=0) return {D:0,H:0,M:0,S:0}; return {D:Math.floor(d/86400000),H:Math.floor(d%86400000/3600000),M:Math.floor(d%3600000/60000),S:Math.floor(d%60000/1000)}; };
-const toB64 = f => new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(f); });
-
-async function callAI(messages, system, max=1200) {
-  const body = {model:'claude-sonnet-4-20250514',max_tokens:max,messages};
-  if(system) body.system = system;
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':'YOUR_API_KEY_HERE','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok) throw new Error('API '+r.status);
-  const d = await r.json();
-  return d.content?.find(b=>b.type==='text')?.text || '';
+async function callAI(messages,system,max=1200){
+  const body={model:"claude-sonnet-4-20250514",max_tokens:max,messages};
+  if(system)body.system=system;
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok){const txt=await r.text();throw new Error("API "+r.status+": "+txt.slice(0,100));}
+  const d=await r.json();
+  return d.content?.find(b=>b.type==="text")?.text||"";
 }
-
-async function callAIPDF(b64data, prompt) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':'YOUR_API_KEY_HERE','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
-      messages:[{role:'user',content:[
-        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64data}},
-        {type:'text',text:prompt}
+async function callAIPDF(b64data,prompt){
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,
+      messages:[{role:"user",content:[
+        {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64data}},
+        {type:"text",text:prompt}
       ]}]
     })
   });
-  if(!r.ok) throw new Error('PDF API '+r.status);
-  const d = await r.json();
-  if(d.error) throw new Error(d.error.message);
-  return d.content?.find(b=>b.type==='text')?.text || '';
+  if(!r.ok)throw new Error("PDF API "+r.status);
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content?.find(b=>b.type==="text")?.text||"";
 }
 
-function getPYQs(chs) {
-  const qs = [];
-  Object.entries(chs).forEach(([sub,arr]) => arr.forEach(ch => { const b=PYQ[ch]; if(b) b.forEach(q=>qs.push({...q,sub,ch})); }));
+function getPYQs(chs){
+  const qs=[];
+  Object.entries(chs).forEach(([sub,arr])=>arr.forEach(ch=>{const b=PYQ[ch];if(b)b.forEach(q=>qs.push({...q,sub,ch}));}));
   return qs.sort(()=>Math.random()-.5).slice(0,20);
 }
 
-// ── Style helpers ──
-const css = (dark) => `
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:${dark?'#030712':'#f0f4f8'};color:${dark?'#e5e7eb':'#111827'}}
-`;
-
-// ── UI components ──
-function Spin({sz=20,c='#22d3ee'}) {
-  return e('div',{style:{width:sz,height:sz,border:'2px solid '+c+'30',borderTopColor:c,borderRadius:'50%',animation:'spin .8s linear infinite',flexShrink:0}});
+// ── UI primitives ──
+function Spin({sz=20,c="#22d3ee"}){
+  return <div style={{width:sz,height:sz,border:"2px solid "+c+"30",borderTopColor:c,borderRadius:"50%",animation:"spin .8s linear infinite",flexShrink:0}}/>;
 }
-
-function PBar({label,val,color,t}) {
-  return e('div',{style:{marginBottom:10}},
-    e('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:3}},
-      e('span',{style:{fontSize:12,color:t.t2}},label),
-      e('span',{style:{fontSize:12,color,fontFamily:'monospace',fontWeight:700}},val+'%')
-    ),
-    e('div',{style:{background:t.bg3,borderRadius:3,height:6}},
-      e('div',{style:{width:Math.max(0,Math.min(100,val))+'%',height:'100%',borderRadius:3,background:'linear-gradient(90deg,'+color+'60,'+color+')',transition:'width .8s'}})
-    )
+function PBar({label,val,color,t}){
+  return(
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontSize:12,color:t.t2}}>{label}</span>
+        <span style={{fontSize:12,color,fontFamily:"monospace",fontWeight:700}}>{val}%</span>
+      </div>
+      <div style={{background:t.bg3,borderRadius:3,height:6}}>
+        <div style={{width:Math.max(0,Math.min(100,val))+"%",height:"100%",borderRadius:3,background:"linear-gradient(90deg,"+color+"60,"+color+")",transition:"width .8s"}}/>
+      </div>
+    </div>
   );
+}
+function Card({children,t,color,style={}}){
+  return <div style={{background:t.bg2,border:"1px solid "+(color?color+"33":t.bd),borderRadius:12,padding:18,borderLeft:color?"3px solid "+color:undefined,...style}}>{children}</div>;
+}
+function Lbl({children,t}){
+  return <div style={{fontSize:10,color:t.t3,letterSpacing:2,marginBottom:10}}>{children}</div>;
 }
 
 // ── WELCOME ──
-function Welcome({onS,onL,t}) {
-  const btn = (onClick,bg,color,children) => e('button',{onClick,style:{background:bg,border:'1px solid '+t.bd,borderRadius:12,padding:15,color,fontSize:14,fontWeight:800,width:'100%',marginBottom:10}},children);
-  return e('div',{style:{minHeight:'100vh',background:t.bg,display:'flex',alignItems:'center',justifyContent:'center',padding:24}},
-    e('div',{style:{maxWidth:380,width:'100%',textAlign:'center'}},
-      e('div',{style:{width:64,height:64,borderRadius:16,background:'linear-gradient(135deg,#f97316,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px',boxShadow:'0 0 40px rgba(249,115,22,.4)'}},'⚔'),
-      e('div',{style:{fontSize:16,fontWeight:900,color:t.ac,letterSpacing:3,marginBottom:6,fontFamily:'monospace'}},'JEE COMMAND CENTER'),
-      e('div',{style:{fontSize:11,color:t.t3,letterSpacing:3,marginBottom:6}},'POWERED BY ZEUS AI'),
-      e('div',{style:{fontSize:13,color:t.t2,marginBottom:28,lineHeight:1.9}},'Real JEE PYQs · Mock analysis · Daily plans',e('br'),'Built only for ',e('span',{style:{color:t.cy,fontWeight:600}},'JEE 2026')),
-      e('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-        e('button',{onClick:onS,style:{background:'linear-gradient(135deg,#22d3ee,#0891b2)',border:'none',borderRadius:12,padding:15,color:'#000',fontSize:14,fontWeight:800}},'🚀 START MY JOURNEY'),
-        e('button',{onClick:onL,style:{background:t.bg2,border:'1px solid '+t.bd,borderRadius:12,padding:13,color:t.t2,fontSize:13}},'Already registered? Login →')
-      )
-    )
+function Welcome({onS,onL,t}){
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:380,width:"100%",textAlign:"center"}}>
+        <div style={{width:64,height:64,borderRadius:16,background:"linear-gradient(135deg,#f97316,#dc2626)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px",boxShadow:"0 0 40px rgba(249,115,22,.4)"}}>⚔</div>
+        <div style={{fontSize:16,fontWeight:900,color:t.ac,letterSpacing:3,marginBottom:6,fontFamily:"monospace"}}>JEE COMMAND CENTER</div>
+        <div style={{fontSize:11,color:t.t3,letterSpacing:3,marginBottom:6}}>POWERED BY ZEUS AI</div>
+        <div style={{fontSize:13,color:t.t2,marginBottom:28,lineHeight:1.9}}>Real JEE PYQs · Mock analysis · Daily plans<br/>Built only for <span style={{color:t.cy,fontWeight:600}}>JEE 2026</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <button onClick={onS} style={{background:"linear-gradient(135deg,#22d3ee,#0891b2)",border:"none",borderRadius:12,padding:15,color:"#000",fontSize:14,fontWeight:800}}>🚀 START MY JOURNEY</button>
+          <button onClick={onL} style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:13,color:t.t2,fontSize:13}}>Already registered? Login →</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ── REGISTER ──
-function Register({onDone,t}) {
-  const [step,setStep] = useState(0);
-  const [name,setName] = useState('');
-  const [score,setScore] = useState('250');
-  const [college,setCollege] = useState('IIT Bombay');
-  const [p1,setP1] = useState('');
-  const [p2,setP2] = useState('');
-  const [err,setErr] = useState('');
-
-  function finish() {
-    if(p1.length!==4){setErr('PIN must be 4 digits');return;}
+function Register({onDone,t}){
+  const[step,setStep]=useState(0);
+  const[name,setName]=useState("");
+  const[score,setScore]=useState("250");
+  const[college,setCollege]=useState("IIT Bombay");
+  const[p1,setP1]=useState("");
+  const[p2,setP2]=useState("");
+  const[err,setErr]=useState("");
+  function finish(){
+    if(p1.length!==4){setErr("PIN must be 4 digits");return;}
     if(p1!==p2){setErr("PINs don't match");return;}
     const prof={name:name.trim(),target:parseInt(score),college,pin:p1,joined:tod()};
-    LS.set(K.p,prof);LS.set(K.mk,[]);LS.set(K.tk,[]);LS.set(K.d,[]);LS.set(K.s,{n:0,last:''});
+    LS.set(K.p,prof);LS.set(K.mk,[]);LS.set(K.tk,[]);LS.set(K.d,[]);LS.set(K.s,{n:0,last:""});
     onDone(prof);
   }
-
-  const inp = (val,set,ph,type='text') => e('input',{value:val,onChange:ev=>set(ev.target.value),type,maxLength:type==='password'?4:80,placeholder:ph,
-    style:{width:'100%',background:t.bg3,border:'1px solid '+t.bd,borderRadius:8,padding:'12px 14px',color:t.tx,fontSize:14,outline:'none',marginBottom:10}});
-
-  const scores = ['200','220','240','250','260','270','280','290+'];
-  const colleges = ['IIT Bombay','IIT Delhi','IIT Madras','IIT Kanpur','IIT Kharagpur','NIT Trichy','BITS Pilani','Any IIT'];
-
-  return e('div',{style:{minHeight:'100vh',background:t.bg,display:'flex',alignItems:'center',justifyContent:'center',padding:24}},
-    e('div',{style:{maxWidth:440,width:'100%',background:t.bg2,border:'1px solid '+t.bd,borderRadius:14,padding:26}},
-      e('div',{style:{fontSize:10,color:t.t3,letterSpacing:2,marginBottom:14}},'STEP '+(step+1)+' OF 3'),
-      e('div',{style:{background:t.bg3,borderRadius:2,height:4,marginBottom:20}},
-        e('div',{style:{width:((step+1)/3*100)+'%',height:'100%',background:'linear-gradient(90deg,#22d3ee,#a78bfa)',borderRadius:2,transition:'width .4s'}})
-      ),
-      step===0 && e(Fragment,null,
-        e('div',{style:{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}},"What's your name?"),
-        e('div',{style:{fontSize:13,color:t.t2,marginBottom:14}},'ZEUS will personalise everything for you.'),
-        inp(name,setName,'Your full name'),
-        e('button',{disabled:!name.trim(),onClick:()=>setStep(1),style:{width:'100%',background:name.trim()?'linear-gradient(135deg,#22d3ee,#0891b2)':'#374151',border:'none',borderRadius:10,padding:14,color:name.trim()?'#000':'#6b7280',fontSize:13,fontWeight:700}},'Continue →')
-      ),
-      step===1 && e(Fragment,null,
-        e('div',{style:{fontSize:18,fontWeight:700,color:t.tx,marginBottom:14}},'Set your targets'),
-        e('div',{style:{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}},'TARGET SCORE (/300)'),
-        e('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:14}},
-          scores.map(v => { const val=v==='290+'?'290':v; return e('button',{key:v,onClick:()=>setScore(val),style:{background:score===val?'#22d3ee22':t.bg3,border:'1px solid '+(score===val?'#22d3ee':t.bd),borderRadius:8,padding:'9px 4px',color:score===val?'#22d3ee':t.t2,fontSize:12}},v); })
-        ),
-        e('div',{style:{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}},'TARGET COLLEGE'),
-        e('select',{value:college,onChange:ev=>setCollege(ev.target.value),style:{width:'100%',background:t.bg3,border:'1px solid '+t.bd,color:t.tx,borderRadius:8,padding:'11px 12px',fontSize:13,marginBottom:14}},
-          colleges.map(c=>e('option',{key:c},c))
-        ),
-        e('div',{style:{display:'flex',gap:10}},
-          e('button',{onClick:()=>setStep(0),style:{flex:1,background:t.bg3,border:'1px solid '+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}},'← Back'),
-          e('button',{onClick:()=>setStep(2),style:{flex:2,background:'linear-gradient(135deg,#22d3ee,#0891b2)',border:'none',borderRadius:10,padding:12,color:'#000',fontSize:13,fontWeight:700}},'Continue →')
-        )
-      ),
-      step===2 && e(Fragment,null,
-        e('div',{style:{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}},'Create a 4-digit PIN'),
-        e('div',{style:{fontSize:13,color:t.t2,marginBottom:14}},'Protects your dashboard.'),
-        inp(p1,setP1,'Enter PIN','password'),
-        inp(p2,setP2,'Confirm PIN','password'),
-        err && e('div',{style:{fontSize:12,color:t.re,background:t.re+'15',borderRadius:6,padding:'8px 10px',marginBottom:10}},'⚠ '+err),
-        e('div',{style:{display:'flex',gap:10}},
-          e('button',{onClick:()=>setStep(1),style:{flex:1,background:t.bg3,border:'1px solid '+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}},'← Back'),
-          e('button',{disabled:p1.length!==4||p2.length!==4,onClick:finish,style:{flex:2,background:p1.length===4&&p2.length===4?'linear-gradient(135deg,#4ade80,#16a34a)':'#374151',border:'none',borderRadius:10,padding:12,color:p1.length===4&&p2.length===4?'#000':'#6b7280',fontSize:13,fontWeight:800}},'🚀 Create Account')
-        )
-      )
-    )
+  const INP=(v,sv,ph,type="text")=>(
+    <input value={v} onChange={e=>sv(e.target.value)} type={type} maxLength={type==="password"?4:80} placeholder={ph}
+      style={{width:"100%",background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"12px 14px",color:t.tx,fontSize:14,outline:"none",marginBottom:10}}/>
+  );
+  const scores=["200","220","240","250","260","270","280","290+"];
+  const colleges=["IIT Bombay","IIT Delhi","IIT Madras","IIT Kanpur","IIT Kharagpur","IIT Roorkee","NIT Trichy","BITS Pilani","Any IIT"];
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:440,width:"100%",background:t.bg2,border:"1px solid "+t.bd,borderRadius:14,padding:26}}>
+        <div style={{fontSize:10,color:t.t3,letterSpacing:2,marginBottom:14}}>STEP {step+1} OF 3</div>
+        <div style={{background:t.bg3,borderRadius:2,height:4,marginBottom:20}}>
+          <div style={{width:((step+1)/3*100)+"%",height:"100%",background:"linear-gradient(90deg,#22d3ee,#a78bfa)",borderRadius:2,transition:"width .4s"}}/>
+        </div>
+        {step===0&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}}>What's your name?</div>
+          <div style={{fontSize:13,color:t.t2,marginBottom:14}}>ZEUS will personalise everything around you.</div>
+          {INP(name,setName,"Your full name")}
+          <button disabled={!name.trim()} onClick={()=>setStep(1)} style={{width:"100%",background:name.trim()?"linear-gradient(135deg,#22d3ee,#0891b2)":"#374151",border:"none",borderRadius:10,padding:14,color:name.trim()?"#000":"#6b7280",fontSize:13,fontWeight:700}}>Continue →</button>
+        </>}
+        {step===1&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:14}}>Set your targets</div>
+          <div style={{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}}>TARGET SCORE (/300)</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+            {scores.map(v=>{const val=v==="290+"?"290":v;return(
+              <button key={v} onClick={()=>setScore(val)} style={{background:score===val?"#22d3ee22":t.bg3,border:"1px solid "+(score===val?"#22d3ee":t.bd),borderRadius:8,padding:"9px 4px",color:score===val?"#22d3ee":t.t2,fontSize:12}}>{v}</button>
+            );})}
+          </div>
+          <div style={{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}}>TARGET COLLEGE</div>
+          <select value={college} onChange={e=>setCollege(e.target.value)} style={{width:"100%",background:t.bg3,border:"1px solid "+t.bd,color:t.tx,borderRadius:8,padding:"11px 12px",fontSize:13,outline:"none",marginBottom:14}}>
+            {colleges.map(c=><option key={c}>{c}</option>)}
+          </select>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setStep(0)} style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}}>← Back</button>
+            <button onClick={()=>setStep(2)} style={{flex:2,background:"linear-gradient(135deg,#22d3ee,#0891b2)",border:"none",borderRadius:10,padding:12,color:"#000",fontSize:13,fontWeight:700}}>Continue →</button>
+          </div>
+        </>}
+        {step===2&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}}>Create a 4-digit PIN</div>
+          <div style={{fontSize:13,color:t.t2,marginBottom:14}}>Protects your dashboard.</div>
+          {INP(p1,setP1,"Enter PIN","password")}
+          {INP(p2,setP2,"Confirm PIN","password")}
+          {err&&<div style={{fontSize:12,color:t.re,background:t.re+"15",borderRadius:6,padding:"8px 10px",marginBottom:10}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setStep(1)} style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}}>← Back</button>
+            <button onClick={finish} disabled={p1.length!==4||p2.length!==4} style={{flex:2,background:p1.length===4&&p2.length===4?"linear-gradient(135deg,#4ade80,#16a34a)":"#374151",border:"none",borderRadius:10,padding:12,color:p1.length===4&&p2.length===4?"#000":"#6b7280",fontSize:13,fontWeight:800}}>🚀 Create Account</button>
+          </div>
+        </>}
+      </div>
+    </div>
   );
 }
 
 // ── LOGIN ──
-function Login({prof,onOK,t}) {
-  const [pin,setPin] = useState('');
-  const [shake,setShake] = useState(false);
-  function press(k) {
-    if(k==='X'){setPin(p=>p.slice(0,-1));return;}
-    if(pin.length>=4) return;
-    const np=pin+k; setPin(np);
-    if(np.length===4){setTimeout(()=>{if(np===prof.pin)onOK();else{setShake(true);setPin('');setTimeout(()=>setShake(false),600);}},100);}
+function Login({prof,onOK,t}){
+  const[pin,setPin]=useState("");
+  const[shake,setShake]=useState(false);
+  function press(k){
+    if(k==="X"){setPin(p=>p.slice(0,-1));return;}
+    if(pin.length>=4)return;
+    const np=pin+k;setPin(np);
+    if(np.length===4){setTimeout(()=>{if(np===prof.pin)onOK();else{setShake(true);setPin("");setTimeout(()=>setShake(false),600);}},100);}
   }
-  return e('div',{style:{minHeight:'100vh',background:t.bg,display:'flex',alignItems:'center',justifyContent:'center',padding:24}},
-    e('div',{style:{maxWidth:300,width:'100%'}},
-      e('div',{style:{textAlign:'center',marginBottom:20}},
-        e('div',{style:{fontSize:12,color:t.ac,letterSpacing:2,fontWeight:900,fontFamily:'monospace'}},'JEE COMMAND CENTER'),
-        e('div',{style:{fontSize:20,fontWeight:700,color:t.tx,marginTop:10}},greet()+', ',e('span',{style:{color:t.cy}},prof.name),' 👋'),
-        e('div',{style:{fontSize:12,color:t.t3,marginTop:4}},'Enter your PIN')
-      ),
-      e('div',{style:{background:t.bg2,border:'1px solid '+t.bd,borderRadius:14,padding:22,animation:shake?'shake .5s':'none'}},
-        e('div',{style:{display:'flex',gap:10,justifyContent:'center',marginBottom:20}},
-          [0,1,2,3].map(i=>e('div',{key:i,style:{width:50,height:56,background:t.bg3,border:'2px solid '+(pin.length>i?t.cy:t.bd),borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,color:t.cy,transition:'border-color .2s'}},pin.length>i?'●':''))
-        ),
-        e('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}},
-          ['1','2','3','4','5','6','7','8','9','','0','X'].map((k,i)=>e('button',{key:i,onClick:()=>k&&press(k),
-            style:{background:k==='X'?t.re+'18':t.bg3,border:'1px solid '+(k==='X'?t.re+'40':t.bd),borderRadius:10,padding:15,fontSize:k==='X'?18:16,color:k==='X'?t.re:t.tx,cursor:k?'pointer':'default',fontWeight:600}},k==='X'?'⌫':k))
-        )
-      )
-    )
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:300,width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:12,color:t.ac,letterSpacing:2,fontWeight:900,fontFamily:"monospace"}}>JEE COMMAND CENTER</div>
+          <div style={{fontSize:20,fontWeight:700,color:t.tx,marginTop:10}}>{greet()},<br/><span style={{color:t.cy}}>{prof.name}</span> 👋</div>
+          <div style={{fontSize:12,color:t.t3,marginTop:4}}>Enter your PIN</div>
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:14,padding:22,animation:shake?"shake .5s":"none"}}>
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:20}}>
+            {[0,1,2,3].map(i=>(
+              <div key={i} style={{width:50,height:56,background:t.bg3,border:"2px solid "+(pin.length>i?t.cy:t.bd),borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:t.cy,transition:"border-color .2s"}}>
+                {pin.length>i?"●":""}
+              </div>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {["1","2","3","4","5","6","7","8","9","","0","X"].map((k,i)=>(
+              <button key={i} onClick={()=>k&&press(k)}
+                style={{background:k==="X"?t.re+"18":t.bg3,border:"1px solid "+(k==="X"?t.re+"40":t.bd),borderRadius:10,padding:15,fontSize:k==="X"?18:16,color:k==="X"?t.re:t.tx,cursor:k?"pointer":"default",fontWeight:600}}>
+                {k==="X"?"⌫":k}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ── ONBOARD CHAPTERS ──
-function ObCh({prof,onDone,t}) {
-  const [sel,setSel] = useState({Physics:[],Chemistry:[],Mathematics:[]});
-  const [sub,setSub] = useState('Physics');
-  const tog = (s,ch) => setSel(p=>({...p,[s]:p[s].includes(ch)?p[s].filter(x=>x!==ch):[...p[s],ch]}));
-  const total = Object.values(sel).flat().length;
-  return e('div',{style:{minHeight:'100vh',background:t.bg,padding:20}},
-    e('div',{style:{maxWidth:800,margin:'0 auto'}},
-      e('div',{style:{textAlign:'center',marginBottom:20}},
-        e('div',{style:{fontSize:10,color:t.cy,letterSpacing:2,marginBottom:8}},'ONBOARDING · STEP 1 OF 2'),
-        e('div',{style:{fontSize:18,fontWeight:700,color:t.tx,marginBottom:4}},'Which chapters have you covered, ',e('span',{style:{color:t.ac}},prof.name),'?'),
-        e('div',{style:{fontSize:13,color:t.t2}},'ZEUS will test you with real JEE PYQs.')
-      ),
-      e('div',{style:{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}},
-        Object.keys(ALL_CH).map(s=>e('button',{key:s,onClick:()=>setSub(s),style:{flex:1,minWidth:90,background:sub===s?SC[s]+'22':t.bg2,border:'1px solid '+(sub===s?SC[s]:t.bd),borderRadius:10,padding:'10px 6px',cursor:'pointer'}},
-          e('div',{style:{fontSize:18}},SI[s]),
-          e('div',{style:{fontSize:11,color:sub===s?SC[s]:t.t2,fontWeight:600,marginTop:4}},s.slice(0,4).toUpperCase()),
-          e('div',{style:{fontSize:10,color:t.t3}},sel[s].length+' sel')
-        ))
-      ),
-      e('div',{style:{background:t.bg2,border:'1px solid '+t.bd,borderRadius:12,padding:18,marginBottom:14}},
-        e('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-          e('div',{style:{fontSize:10,color:t.t3,letterSpacing:2}},sub.toUpperCase()),
-          e('div',{style:{display:'flex',gap:8}},
-            e('button',{onClick:()=>setSel(p=>({...p,[sub]:[...ALL_CH[sub]]})),style:{fontSize:10,color:t.cy,background:t.cy+'20',border:'1px solid '+t.cy+'40',borderRadius:4,padding:'3px 10px'}},'All'),
-            e('button',{onClick:()=>setSel(p=>({...p,[sub]:[]})),style:{fontSize:10,color:t.t3,background:t.bg3,border:'none',borderRadius:4,padding:'3px 10px'}},'Clear')
-          )
-        ),
-        e('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:8}},
-          ALL_CH[sub].map(ch => {
-            const done=sel[sub].includes(ch); const c=SC[sub];
-            return 
+function ObCh({prof,onDone,t}){
+  const[sel,setSel]=useState({Physics:[],Chemistry:[],Mathematics:[]});
+  const[sub,setSub]=useState("Physics");
+  const tog=(s,ch)=>setSel(p=>({...p,[s]:p[s].includes(ch)?p[s].filter(x=>x!==ch):[...p[s],ch]}));
+  const total=Object.values(sel).flat().length;
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,padding:20}}>
+      <div style={{maxWidth:800,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:10,color:t.cy,letterSpacing:2,marginBottom:8}}>ONBOARDING · STEP 1 OF 2</div>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:4}}>Which chapters have you covered, <span style={{color:t.ac}}>{prof.name}</span>?</div>
+          <div style={{fontSize:13,color:t.t2}}>ZEUS will test you with real JEE PYQs.</div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          {Object.keys(ALL_CH).map(s=>(
+            <button key={s} onClick={()=>setSub(s)} style={{flex:1,minWidth:90,background:sub===s?SC[s]+"22":t.bg2,border:"1px solid "+(sub===s?SC[s]:t.bd),borderRadius:10,padding:"10px 6px"}}>
+              <div style={{fontSize:18}}>{SI[s]}</div>
+              <div style={{fontSize:11,color:sub===s?SC[s]:t.t2,fontWeight:600,marginTop:4}}>{s.slice(0,4).toUpperCase()}</div>
+              <div style={{fontSize:10,color:t.t3}}>{sel[s].length} sel</div>
+            </button>
+          ))}
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:
