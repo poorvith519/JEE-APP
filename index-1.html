@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#f97316"/>
+<title>JEE Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#030712;color:#e5e7eb;min-height:100vh}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+button,input,select{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#374151}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;height:100vh;align-items:center;justify-content:center"><div style="width:32px;height:32px;border:3px solid rgba(34,211,238,.2);border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite"></div></div></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+
+const LS={
+  get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+};
+const K={p:"jcc_p",m:"jcc_m",ch:"jcc_ch",mk:"jcc_mk",d:"jcc_d",tk:"jcc_t",s:"jcc_s",ob:"jcc_ob",dk:"jcc_dk"};
+
+const TH=dark=>({
+  bg:dark?"#030712":"#f0f4f8",bg2:dark?"#0a0e1a":"#ffffff",bg3:dark?"#111827":"#e8edf5",
+  bd:dark?"#1f2937":"#d1dae8",bd2:dark?"#374151":"#b0bdd0",
+  tx:dark?"#e5e7eb":"#111827",t2:dark?"#9ca3af":"#4b5563",t3:dark?"#4b5563":"#9ca3af",
+  ac:"#f97316",cy:"#22d3ee",pu:"#a78bfa",gr:"#4ade80",re:"#ef4444",dark
+});
+
+const PYQ={
+  Mechanics:[
+    {q:"Car (1000kg) at 20m/s stops in 40m. Retarding force?",opts:["5000 N","10000 N","2500 N","20000 N"],ans:0,exp:"a=v²/2s=5m/s² → F=5000N"},
+    {q:"Ball thrown up 20m/s from 60m tower. Time to ground (g=10)?",opts:["6 s","4 s","2 s","8 s"],ans:0,exp:"-60=20t-5t² → t=6s"},
+    {q:"Blocks 10kg+5kg. Force 45N. Acceleration?",opts:["3 m/s²","4.5 m/s²","9 m/s²","1.5 m/s²"],ans:0,exp:"a=45/15=3m/s²"},
+  ],
+  Electrostatics:[
+    {q:"Charge Q at corner of cube. Flux through cube?",opts:["Q/8ε₀","Q/ε₀","Q/4ε₀","Q/6ε₀"],ans:0,exp:"8 cubes share corner → Q/8ε₀"},
+    {q:"Energy in 2μF capacitor at 100V?",opts:["0.01 J","0.02 J","200 J","0.1 J"],ans:0,exp:"U=½CV²=0.01J"},
+  ],
+  Thermodynamics:[
+    {q:"Carnot engine 500K to 300K. Efficiency?",opts:["40%","60%","20%","80%"],ans:0,exp:"η=1-300/500=40%"},
+    {q:"Isothermal work 2L to 4L at 300K (1mol)?",opts:["1728 J","2494 J","864 J","3456 J"],ans:0,exp:"W=RT·ln2=1728J"},
+  ],
+  "Modern Physics":[
+    {q:"Half-life 20y. Fraction left after 60y?",opts:["1/8","1/4","1/6","1/16"],ans:0,exp:"3 half-lives → 1/8"},
+    {q:"Photon energy at λ=6000Å?",opts:["3.3×10⁻¹⁹J","6.6×10⁻¹⁹J","1.65×10⁻¹⁹J","2.2×10⁻¹⁹J"],ans:0,exp:"E=hc/λ=3.3×10⁻¹⁹J"},
+  ],
+  Waves:[{q:"f=100Hz, v=200m/s. Wavelength?",opts:["2m","0.5m","4m","1m"],ans:0,exp:"λ=v/f=2m"}],
+  Optics:[{q:"Critical angle=30°. Refractive index?",opts:["2.0","1.5","1.73","1.41"],ans:0,exp:"n=1/sin30°=2"}],
+  Calculus:[
+    {q:"∫₀¹ x·eˣ dx = ?",opts:["1","e-1","e","e+1"],ans:0,exp:"IBP gives 1"},
+    {q:"d/dx[tan⁻¹x] = ?",opts:["1/(1+x²)","1/(1-x²)","-1/(1+x²)","1/√(1-x²)"],ans:0,exp:"Standard: 1/(1+x²)"},
+    {q:"lim(x→0) sinx/x = ?",opts:["1","0","∞","-1"],ans:0,exp:"Fundamental limit = 1"},
+  ],
+  Algebra:[
+    {q:"Sum and product of roots of x²-5x+6=0?",opts:["5 and 6","-5 and 6","5 and -6","-5 and -6"],ans:0,exp:"Vieta: sum=5, product=6"},
+    {q:"ⁿC₀+ⁿC₁+...+ⁿCₙ = ?",opts:["2ⁿ","n!","2n","n²"],ans:0,exp:"(1+1)ⁿ=2ⁿ"},
+  ],
+  Probability:[
+    {q:"Fair die. P(number > 4)?",opts:["1/3","1/2","2/3","1/6"],ans:0,exp:"{5,6} → 2/6=1/3"},
+    {q:"P(A)=0.6,P(B)=0.4,P(A∩B)=0.2. P(A∪B)?",opts:["0.8","0.6","1.0","0.4"],ans:0,exp:"0.6+0.4-0.2=0.8"},
+  ],
+  Trigonometry:[{q:"sin²30°+cos²60°+tan²45° = ?",opts:["3/2","1","2","5/4"],ans:0,exp:"1/4+1/4+1=3/2"}],
+  Vectors:[{q:"|A|=3,|B|=4,|A+B|=5. |A×B|?",opts:["12","7","25","0"],ans:0,exp:"A⊥B → 3×4=12"}],
+  Organic:[
+    {q:"Primary alcohol to aldehyde only (no over-oxidation)?",opts:["PCC/CH₂Cl₂","KMnO₄","K₂Cr₂O₇","HNO₃"],ans:0,exp:"PCC stops at aldehyde"},
+    {q:"HBr + CH₃CH=CH₂ (Markovnikov). Product?",opts:["CH₃CHBrCH₃","CH₃CH₂CH₂Br","BrCH₂CH₂CH₃","CH₂BrCH=CH₂"],ans:0,exp:"H to terminal C → CH₃CHBrCH₃"},
+  ],
+  Physical:[
+    {q:"pH of 0.01M NaOH?",opts:["12","2","7","11"],ans:0,exp:"pOH=2 → pH=12"},
+    {q:"Spontaneous at ALL temperatures when?",opts:["ΔH<0 and ΔS>0","ΔH>0 and ΔS<0","ΔH<0 and ΔS<0","ΔH>0 and ΔS>0"],ans:0,exp:"ΔG always negative"},
+  ],
+  Electrochemistry:[{q:"Zn|Zn²⁺||Cu²⁺|Cu. E°cell?",opts:["1.10V","-1.10V","0.42V","-0.42V"],ans:0,exp:"0.34-(-0.76)=1.10V"}],
+  Matrices:[{q:"A=[[1,2],[3,4]]. det(A)?",opts:["-2","2","-10","10"],ans:0,exp:"4-6=-2"}],
+  Equilibrium:[{q:"PCl₅⇌PCl₃+Cl₂, Kc=0.04. α≈?",opts:["0.2","0.04","0.5","0.1"],ans:0,exp:"α²=0.04 → α=0.2"}],
+  "Coordinate Geometry":[{q:"x²+y²-4x-6y+9=0. Centre & radius?",opts:["(2,3) r=2","(2,3) r=3","(-2,-3) r=2","(4,6) r=9"],ans:0,exp:"r=√(4+9-9)=2"}],
+};
+
+const ALL_CH={
+  Physics:["Mechanics","Kinematics","Thermodynamics","Waves","Electrostatics","Magnetism","Optics","Modern Physics","Current Electricity","Semiconductors"],
+  Chemistry:["Organic","Inorganic","Physical","Electrochemistry","Equilibrium","Chemical Kinetics","Coordination Compounds","Surface Chemistry"],
+  Mathematics:["Calculus","Algebra","Coordinate Geometry","Probability","Trigonometry","Matrices","Vectors","3D Geometry","Statistics"],
+};
+const SC={Physics:"#f97316",Chemistry:"#22d3ee",Mathematics:"#a78bfa"};
+const SI={Physics:"⚡",Chemistry:"🧪",Mathematics:"∑"};
+const JEE=new Date("2026-04-13T09:00:00");
+const avgO=o=>{const v=Object.values(o||{}).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0};
+const tod=()=>new Date().toISOString().slice(0,10);
+const greet=()=>{const h=new Date().getHours();return h<12?"Good morning":h<17?"Good afternoon":"Good evening"};
+function getCD(){const d=JEE-new Date();if(d<=0)return{D:0,H:0,M:0,S:0};return{D:Math.floor(d/86400000),H:Math.floor(d%86400000/3600000),M:Math.floor(d%3600000/60000),S:Math.floor(d%60000/1000)};}
+const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(f);});
+
+async function callAI(messages,system,max=1200){
+  const body={model:"claude-sonnet-4-20250514",max_tokens:max,messages};
+  if(system)body.system=system;
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok){const txt=await r.text();throw new Error("API "+r.status+": "+txt.slice(0,100));}
+  const d=await r.json();
+  return d.content?.find(b=>b.type==="text")?.text||"";
+}
+async function callAIPDF(b64data,prompt){
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,
+      messages:[{role:"user",content:[
+        {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64data}},
+        {type:"text",text:prompt}
+      ]}]
+    })
+  });
+  if(!r.ok)throw new Error("PDF API "+r.status);
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content?.find(b=>b.type==="text")?.text||"";
+}
+
+function getPYQs(chs){
+  const qs=[];
+  Object.entries(chs).forEach(([sub,arr])=>arr.forEach(ch=>{const b=PYQ[ch];if(b)b.forEach(q=>qs.push({...q,sub,ch}));}));
+  return qs.sort(()=>Math.random()-.5).slice(0,20);
+}
+
+// ── UI primitives ──
+function Spin({sz=20,c="#22d3ee"}){
+  return <div style={{width:sz,height:sz,border:"2px solid "+c+"30",borderTopColor:c,borderRadius:"50%",animation:"spin .8s linear infinite",flexShrink:0}}/>;
+}
+function PBar({label,val,color,t}){
+  return(
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontSize:12,color:t.t2}}>{label}</span>
+        <span style={{fontSize:12,color,fontFamily:"monospace",fontWeight:700}}>{val}%</span>
+      </div>
+      <div style={{background:t.bg3,borderRadius:3,height:6}}>
+        <div style={{width:Math.max(0,Math.min(100,val))+"%",height:"100%",borderRadius:3,background:"linear-gradient(90deg,"+color+"60,"+color+")",transition:"width .8s"}}/>
+      </div>
+    </div>
+  );
+}
+function Card({children,t,color,style={}}){
+  return <div style={{background:t.bg2,border:"1px solid "+(color?color+"33":t.bd),borderRadius:12,padding:18,borderLeft:color?"3px solid "+color:undefined,...style}}>{children}</div>;
+}
+function Lbl({children,t}){
+  return <div style={{fontSize:10,color:t.t3,letterSpacing:2,marginBottom:10}}>{children}</div>;
+}
+
+// ── WELCOME ──
+function Welcome({onS,onL,t}){
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:380,width:"100%",textAlign:"center"}}>
+        <div style={{width:64,height:64,borderRadius:16,background:"linear-gradient(135deg,#f97316,#dc2626)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px",boxShadow:"0 0 40px rgba(249,115,22,.4)"}}>⚔</div>
+        <div style={{fontSize:16,fontWeight:900,color:t.ac,letterSpacing:3,marginBottom:6,fontFamily:"monospace"}}>JEE COMMAND CENTER</div>
+        <div style={{fontSize:11,color:t.t3,letterSpacing:3,marginBottom:6}}>POWERED BY ZEUS AI</div>
+        <div style={{fontSize:13,color:t.t2,marginBottom:28,lineHeight:1.9}}>Real JEE PYQs · Mock analysis · Daily plans<br/>Built only for <span style={{color:t.cy,fontWeight:600}}>JEE 2026</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <button onClick={onS} style={{background:"linear-gradient(135deg,#22d3ee,#0891b2)",border:"none",borderRadius:12,padding:15,color:"#000",fontSize:14,fontWeight:800}}>🚀 START MY JOURNEY</button>
+          <button onClick={onL} style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:13,color:t.t2,fontSize:13}}>Already registered? Login →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── REGISTER ──
+function Register({onDone,t}){
+  const[step,setStep]=useState(0);
+  const[name,setName]=useState("");
+  const[score,setScore]=useState("250");
+  const[college,setCollege]=useState("IIT Bombay");
+  const[p1,setP1]=useState("");
+  const[p2,setP2]=useState("");
+  const[err,setErr]=useState("");
+  function finish(){
+    if(p1.length!==4){setErr("PIN must be 4 digits");return;}
+    if(p1!==p2){setErr("PINs don't match");return;}
+    const prof={name:name.trim(),target:parseInt(score),college,pin:p1,joined:tod()};
+    LS.set(K.p,prof);LS.set(K.mk,[]);LS.set(K.tk,[]);LS.set(K.d,[]);LS.set(K.s,{n:0,last:""});
+    onDone(prof);
+  }
+  const INP=(v,sv,ph,type="text")=>(
+    <input value={v} onChange={e=>sv(e.target.value)} type={type} maxLength={type==="password"?4:80} placeholder={ph}
+      style={{width:"100%",background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"12px 14px",color:t.tx,fontSize:14,outline:"none",marginBottom:10}}/>
+  );
+  const scores=["200","220","240","250","260","270","280","290+"];
+  const colleges=["IIT Bombay","IIT Delhi","IIT Madras","IIT Kanpur","IIT Kharagpur","IIT Roorkee","NIT Trichy","BITS Pilani","Any IIT"];
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:440,width:"100%",background:t.bg2,border:"1px solid "+t.bd,borderRadius:14,padding:26}}>
+        <div style={{fontSize:10,color:t.t3,letterSpacing:2,marginBottom:14}}>STEP {step+1} OF 3</div>
+        <div style={{background:t.bg3,borderRadius:2,height:4,marginBottom:20}}>
+          <div style={{width:((step+1)/3*100)+"%",height:"100%",background:"linear-gradient(90deg,#22d3ee,#a78bfa)",borderRadius:2,transition:"width .4s"}}/>
+        </div>
+        {step===0&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}}>What's your name?</div>
+          <div style={{fontSize:13,color:t.t2,marginBottom:14}}>ZEUS will personalise everything around you.</div>
+          {INP(name,setName,"Your full name")}
+          <button disabled={!name.trim()} onClick={()=>setStep(1)} style={{width:"100%",background:name.trim()?"linear-gradient(135deg,#22d3ee,#0891b2)":"#374151",border:"none",borderRadius:10,padding:14,color:name.trim()?"#000":"#6b7280",fontSize:13,fontWeight:700}}>Continue →</button>
+        </>}
+        {step===1&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:14}}>Set your targets</div>
+          <div style={{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}}>TARGET SCORE (/300)</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+            {scores.map(v=>{const val=v==="290+"?"290":v;return(
+              <button key={v} onClick={()=>setScore(val)} style={{background:score===val?"#22d3ee22":t.bg3,border:"1px solid "+(score===val?"#22d3ee":t.bd),borderRadius:8,padding:"9px 4px",color:score===val?"#22d3ee":t.t2,fontSize:12}}>{v}</button>
+            );})}
+          </div>
+          <div style={{fontSize:10,color:t.t3,letterSpacing:1,marginBottom:8}}>TARGET COLLEGE</div>
+          <select value={college} onChange={e=>setCollege(e.target.value)} style={{width:"100%",background:t.bg3,border:"1px solid "+t.bd,color:t.tx,borderRadius:8,padding:"11px 12px",fontSize:13,outline:"none",marginBottom:14}}>
+            {colleges.map(c=><option key={c}>{c}</option>)}
+          </select>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setStep(0)} style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}}>← Back</button>
+            <button onClick={()=>setStep(2)} style={{flex:2,background:"linear-gradient(135deg,#22d3ee,#0891b2)",border:"none",borderRadius:10,padding:12,color:"#000",fontSize:13,fontWeight:700}}>Continue →</button>
+          </div>
+        </>}
+        {step===2&&<>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:6}}>Create a 4-digit PIN</div>
+          <div style={{fontSize:13,color:t.t2,marginBottom:14}}>Protects your dashboard.</div>
+          {INP(p1,setP1,"Enter PIN","password")}
+          {INP(p2,setP2,"Confirm PIN","password")}
+          {err&&<div style={{fontSize:12,color:t.re,background:t.re+"15",borderRadius:6,padding:"8px 10px",marginBottom:10}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setStep(1)} style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:10,padding:12,color:t.t2,fontSize:13}}>← Back</button>
+            <button onClick={finish} disabled={p1.length!==4||p2.length!==4} style={{flex:2,background:p1.length===4&&p2.length===4?"linear-gradient(135deg,#4ade80,#16a34a)":"#374151",border:"none",borderRadius:10,padding:12,color:p1.length===4&&p2.length===4?"#000":"#6b7280",fontSize:13,fontWeight:800}}>🚀 Create Account</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── LOGIN ──
+function Login({prof,onOK,t}){
+  const[pin,setPin]=useState("");
+  const[shake,setShake]=useState(false);
+  function press(k){
+    if(k==="X"){setPin(p=>p.slice(0,-1));return;}
+    if(pin.length>=4)return;
+    const np=pin+k;setPin(np);
+    if(np.length===4){setTimeout(()=>{if(np===prof.pin)onOK();else{setShake(true);setPin("");setTimeout(()=>setShake(false),600);}},100);}
+  }
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:300,width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:12,color:t.ac,letterSpacing:2,fontWeight:900,fontFamily:"monospace"}}>JEE COMMAND CENTER</div>
+          <div style={{fontSize:20,fontWeight:700,color:t.tx,marginTop:10}}>{greet()},<br/><span style={{color:t.cy}}>{prof.name}</span> 👋</div>
+          <div style={{fontSize:12,color:t.t3,marginTop:4}}>Enter your PIN</div>
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:14,padding:22,animation:shake?"shake .5s":"none"}}>
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:20}}>
+            {[0,1,2,3].map(i=>(
+              <div key={i} style={{width:50,height:56,background:t.bg3,border:"2px solid "+(pin.length>i?t.cy:t.bd),borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:t.cy,transition:"border-color .2s"}}>
+                {pin.length>i?"●":""}
+              </div>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {["1","2","3","4","5","6","7","8","9","","0","X"].map((k,i)=>(
+              <button key={i} onClick={()=>k&&press(k)}
+                style={{background:k==="X"?t.re+"18":t.bg3,border:"1px solid "+(k==="X"?t.re+"40":t.bd),borderRadius:10,padding:15,fontSize:k==="X"?18:16,color:k==="X"?t.re:t.tx,cursor:k?"pointer":"default",fontWeight:600}}>
+                {k==="X"?"⌫":k}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ONBOARD CHAPTERS ──
+function ObCh({prof,onDone,t}){
+  const[sel,setSel]=useState({Physics:[],Chemistry:[],Mathematics:[]});
+  const[sub,setSub]=useState("Physics");
+  const tog=(s,ch)=>setSel(p=>({...p,[s]:p[s].includes(ch)?p[s].filter(x=>x!==ch):[...p[s],ch]}));
+  const total=Object.values(sel).flat().length;
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,padding:20}}>
+      <div style={{maxWidth:800,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:10,color:t.cy,letterSpacing:2,marginBottom:8}}>ONBOARDING · STEP 1 OF 2</div>
+          <div style={{fontSize:18,fontWeight:700,color:t.tx,marginBottom:4}}>Which chapters have you covered, <span style={{color:t.ac}}>{prof.name}</span>?</div>
+          <div style={{fontSize:13,color:t.t2}}>ZEUS will test you with real JEE PYQs.</div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          {Object.keys(ALL_CH).map(s=>(
+            <button key={s} onClick={()=>setSub(s)} style={{flex:1,minWidth:90,background:sub===s?SC[s]+"22":t.bg2,border:"1px solid "+(sub===s?SC[s]:t.bd),borderRadius:10,padding:"10px 6px"}}>
+              <div style={{fontSize:18}}>{SI[s]}</div>
+              <div style={{fontSize:11,color:sub===s?SC[s]:t.t2,fontWeight:600,marginTop:4}}>{s.slice(0,4).toUpperCase()}</div>
+              <div style={{fontSize:10,color:t.t3}}>{sel[s].length} sel</div>
+            </button>
+          ))}
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:18,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <Lbl t={t}>{sub.toUpperCase()} CHAPTERS</Lbl>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setSel(p=>({...p,[sub]:[...ALL_CH[sub]]}))} style={{fontSize:10,color:t.cy,background:t.cy+"20",border:"1px solid "+t.cy+"40",borderRadius:4,padding:"3px 10px"}}>All</button>
+              <button onClick={()=>setSel(p=>({...p,[sub]:[]}))} style={{fontSize:10,color:t.t3,background:t.bg3,border:"none",borderRadius:4,padding:"3px 10px"}}>Clear</button>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
+            {ALL_CH[sub].map(ch=>{
+              const done=sel[sub].includes(ch);const c=SC[sub];
+              return(
+                <button key={ch} onClick={()=>tog(sub,ch)} style={{background:done?c+"15":t.bg3,border:"1px solid "+(done?c:t.bd),borderRadius:8,padding:"9px 12px",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:16,height:16,borderRadius:3,border:"2px solid "+(done?c:t.bd2),background:done?c:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:9,color:"#000"}}>{done&&"✓"}</div>
+                  <span style={{fontSize:12,color:done?t.tx:t.t2}}>{ch}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:13,color:t.t2}}><span style={{color:t.cy,fontWeight:700}}>{total}</span> chapters selected</div>
+          <button disabled={total<2} onClick={()=>onDone(sel)} style={{background:total>=2?"linear-gradient(135deg,#22d3ee,#0891b2)":"#374151",border:"none",borderRadius:12,padding:"12px 22px",color:total>=2?"#000":"#6b7280",fontSize:13,fontWeight:800}}>
+            START PYQ TEST →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ONBOARD PYQ ──
+function ObPYQ({prof,chs,onDone,t}){
+  const[phase,setPhase]=useState("intro");
+  const[qs]=useState(()=>getPYQs(chs));
+  const[qi,setQi]=useState(0);
+  const[answers,setAnswers]=useState([]);
+  const[sel,setSel]=useState(null);
+
+  function pick(i){if(sel!==null)return;setSel(i);}
+  function next(){
+    const na=[...answers,{chosen:sel,correct:qs[qi].ans,ch:qs[qi].ch,sub:qs[qi].sub}];
+    setAnswers(na);setSel(null);
+    if(qi<qs.length-1)setQi(x=>x+1);else finish(na);
+  }
+  function finish(all){
+    const cs={};
+    all.forEach(a=>{if(!cs[a.ch])cs[a.ch]={c:0,t:0,sub:a.sub};cs[a.ch].t++;if(a.chosen===a.correct)cs[a.ch].c++;});
+    const m={};
+    Object.keys(ALL_CH).forEach(sub=>{
+      m[sub]={};
+      ALL_CH[sub].forEach(ch=>{
+        if(cs[ch]){const r=cs[ch].c/cs[ch].t;m[sub][ch]=r===1?88:r>=.5?65:r>0?42:20;}
+        else if(chs[sub]?.includes(ch))m[sub][ch]=50;
+        else m[sub][ch]=0;
+      });
+    });
+    LS.set(K.m,m);LS.set(K.ch,chs);LS.set(K.ob,{done:true});
+    setPhase("done");setTimeout(()=>onDone(m),1200);
+  }
+
+  if(!qs.length)return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center",color:t.tx,padding:24}}>
+        <div style={{fontSize:36,marginBottom:12}}>⚠️</div>
+        <div style={{marginBottom:8,fontSize:15}}>No PYQs found for selected chapters.</div>
+        <div style={{fontSize:13,color:t.t2,marginBottom:20}}>Try selecting Mechanics, Calculus, Organic etc.</div>
+        <button onClick={()=>onDone({})} style={{background:t.cy,border:"none",borderRadius:10,padding:"12px 24px",color:"#000",fontWeight:700}}>Skip →</button>
+      </div>
+    </div>
+  );
+
+  const q=qs[qi];
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:620}}>
+        {phase==="intro"&&(
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:40,marginBottom:12}}>📋</div>
+            <div style={{fontSize:12,color:t.cy,letterSpacing:2,marginBottom:8,fontFamily:"monospace"}}>PYQ BASELINE TEST</div>
+            <div style={{fontSize:19,fontWeight:700,color:t.tx,marginBottom:8}}>Real JEE Assessment</div>
+            <div style={{fontSize:13,color:t.t2,marginBottom:24,lineHeight:1.8}}><strong style={{color:t.cy}}>{qs.length} questions</strong> from your chapters.<br/>Answer honestly to map your starting mastery.</div>
+            <button onClick={()=>setPhase("test")} style={{background:"linear-gradient(135deg,#f97316,#dc2626)",border:"none",borderRadius:12,padding:"14px 30px",color:"#fff",fontSize:14,fontWeight:800}}>⚡ START TEST →</button>
+          </div>
+        )}
+        {phase==="test"&&q&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{fontSize:10,color:t.t3,letterSpacing:2}}>PYQ ASSESSMENT</span>
+              <span style={{fontSize:10,color:t.t3}}><span style={{color:t.gr}}>✓{answers.filter(a=>a.chosen===a.correct).length}</span> · {qi+1}/{qs.length}</span>
+            </div>
+            <div style={{background:t.bg3,borderRadius:2,height:3,marginBottom:16}}>
+              <div style={{width:(qi/qs.length*100)+"%",height:"100%",background:"linear-gradient(90deg,"+t.cy+","+t.pu+")",borderRadius:2,transition:"width .3s"}}/>
+            </div>
+            <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:18,marginBottom:12}}>
+              <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:10,color:SC[q.sub],background:SC[q.sub]+"20",padding:"3px 10px",borderRadius:20}}>{q.sub}</span>
+                <span style={{fontSize:10,color:t.t3,background:t.bg3,padding:"3px 10px",borderRadius:20}}>{q.ch}</span>
+                <span style={{fontSize:10,color:"#fbbf24",background:"#fbbf2418",padding:"3px 10px",borderRadius:20}}>JEE LEVEL</span>
+              </div>
+              <div style={{fontSize:15,color:t.tx,lineHeight:1.7,fontWeight:500}}>{q.q}</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+              {q.opts.map((opt,i)=>{
+                let bg=t.bg2,brd=t.bd,col=t.t2;
+                if(sel!==null){if(i===q.ans){bg="#16a34a20";brd="#4ade80";col=t.gr;}else if(i===sel){bg=t.re+"15";brd=t.re;col=t.re;}}
+                return(
+                  <button key={i} onClick={()=>pick(i)} disabled={sel!==null}
+                    style={{background:bg,border:"1px solid "+brd,borderRadius:10,padding:"12px 16px",textAlign:"left",cursor:sel!==null?"default":"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .1s"}}>
+                    <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:t.bg3,color:col,flexShrink:0}}>{String.fromCharCode(65+i)}</div>
+                    <span style={{fontSize:13,color:col,flex:1}}>{opt}</span>
+                    {sel!==null&&i===q.ans&&<span>✅</span>}
+                    {sel!==null&&i===sel&&sel!==q.ans&&<span>❌</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {sel!==null&&<>
+              {q.exp&&<div style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:10,padding:14,marginBottom:12}}>
+                <div style={{fontSize:10,color:t.cy,letterSpacing:1,marginBottom:4}}>EXPLANATION</div>
+                <div style={{fontSize:13,color:t.t2,lineHeight:1.7}}>{q.exp}</div>
+              </div>}
+              <button onClick={next} style={{width:"100%",background:"linear-gradient(135deg,#22d3ee,#0891b2)",border:"none",borderRadius:10,padding:14,color:"#000",fontSize:13,fontWeight:800}}>
+                {qi<qs.length-1?"Next →":"Finish →"}
+              </button>
+            </>}
+          </div>
+        )}
+        {phase==="done"&&<div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:10}}>🎯</div><div style={{fontFamily:"monospace",fontSize:13,color:t.gr,letterSpacing:2}}>BASELINE LOCKED!</div><div style={{display:"flex",justifyContent:"center",marginTop:18}}><Spin sz={34} c={t.gr}/></div></div>}
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD ──
+function Dashboard({prof,mastery,mocks,streak,t}){
+  const[cd,setCd]=useState(getCD());
+  useEffect(()=>{const ti=setInterval(()=>setCd(getCD()),1000);return()=>clearInterval(ti);},[]);
+  const pa=avgO(mastery.Physics||{}),ca=avgO(mastery.Chemistry||{}),ma=avgO(mastery.Mathematics||{});
+  const ov=Math.round((pa+ca+ma)/3);
+  const latest=mocks[mocks.length-1];
+  const imp=mocks.length>=2?mocks[mocks.length-1].score-mocks[mocks.length-2].score:null;
+  const weak=Object.entries(mastery).flatMap(([sub,chs])=>Object.entries(chs||{}).filter(([,v])=>v>0&&v<55).map(([ch,v])=>({sub,ch,v}))).sort((a,b)=>a.v-b.v).slice(0,5);
+  const dl=LS.get(K.d)||[];const td=dl.find(d=>d.date===tod());
+  const CDU=(v,l)=><div style={{textAlign:"center"}}><div style={{fontFamily:"monospace",fontSize:22,fontWeight:900,color:t.ac,lineHeight:1}}>{String(v).padStart(2,"0")}</div><div style={{fontSize:8,color:t.t3,letterSpacing:2,marginTop:2}}>{l}</div></div>;
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{background:t.bg2,border:"1px solid "+t.cy+"33",borderRadius:14,padding:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+          <div>
+            <div style={{fontSize:10,color:t.cy,letterSpacing:2,marginBottom:4}}>⚡ ZEUS COMMAND CENTER</div>
+            <div style={{fontSize:19,fontWeight:700,color:t.tx}}>{greet()}, <span style={{color:t.ac}}>{prof.name}</span>! 👋</div>
+            <div style={{fontSize:13,color:t.t2,marginTop:6,lineHeight:1.8}}>
+              <strong style={{color:t.ac}}>{cd.D} days</strong> to JEE · {mocks.length}/20 mocks · <span style={{color:t.gr}}>🔥 {streak?.n||0} day streak</span><br/>
+              Target: <strong style={{color:t.ac}}>{prof.target}/300</strong> · {prof.college}
+            </div>
+            <div style={{marginTop:10}}>
+              {td?<span style={{fontSize:12,color:t.gr,background:t.gr+"18",padding:"4px 12px",borderRadius:20}}>✅ Today's check-in done</span>
+                :<span style={{fontSize:12,color:"#fbbf24",background:"#fbbf2418",padding:"4px 12px",borderRadius:20}}>⚠ Check-in pending → AI Mentor</span>}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:10,padding:"10px 14px",background:t.bg,border:"1px solid "+t.bd,borderRadius:10,flexWrap:"wrap",alignItems:"center"}}>
+            {CDU(cd.D,"DAYS")}<span style={{color:t.bd2}}>:</span>
+            {CDU(cd.H,"HRS")}<span style={{color:t.bd2}}>:</span>
+            {CDU(cd.M,"MIN")}<span style={{color:t.bd2}}>:</span>
+            {CDU(cd.S,"SEC")}
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+        {[
+          {l:"MASTERY",v:ov+"%",s:"all subjects",c:t.ac},
+          {l:"LATEST MOCK",v:latest?latest.score+"/300":"—",s:latest?latest.test:"upload first mock",c:t.cy},
+          {l:"TREND",v:imp!==null?(imp>0?"+"+imp:imp===0?"—":String(imp)):"—",s:"vs previous",c:imp===null?"#6b7280":imp>=0?t.gr:t.re},
+          {l:"STREAK",v:(streak?.n||0)+" 🔥",s:"days in a row",c:"#fbbf24"},
+        ].map((x,i)=>(
+          <div key={i} style={{background:t.bg2,border:"1px solid "+x.c+"33",borderRadius:12,padding:"13px 15px",borderLeft:"3px solid "+x.c}}>
+            <div style={{fontSize:9,color:t.t3,letterSpacing:2,marginBottom:3}}>{x.l}</div>
+            <div style={{fontFamily:"monospace",fontSize:21,color:x.c,fontWeight:700}}>{x.v}</div>
+            <div style={{fontSize:10,color:t.t3,marginTop:2}}>{x.s}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:18}}>
+          <Lbl t={t}>SUBJECT MASTERY</Lbl>
+          <PBar label="⚡ Physics" val={pa} color="#f97316" t={t}/>
+          <PBar label="🧪 Chemistry" val={ca} color="#22d3ee" t={t}/>
+          <PBar label="∑ Mathematics" val={ma} color="#a78bfa" t={t}/>
+          <div style={{borderTop:"1px solid "+t.bd,paddingTop:10,marginTop:4,display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:t.t2}}>Overall</span>
+            <span style={{fontFamily:"monospace",fontSize:13,color:t.ac,fontWeight:700}}>{ov}%</span>
+          </div>
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:18}}>
+          <Lbl t={t}>⚠ WEAK ZONES</Lbl>
+          {weak.length>0?weak.map((w,i)=>(
+            <div key={i} style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <div><span style={{fontSize:12,color:t.tx}}>{w.ch}</span><span style={{fontSize:10,color:t.t3,marginLeft:6}}>{w.sub.slice(0,4)}</span></div>
+                <span style={{fontSize:12,color:t.re,fontFamily:"monospace",fontWeight:700}}>{w.v}%</span>
+              </div>
+              <div style={{background:t.bg3,borderRadius:2,height:4}}>
+                <div style={{width:w.v+"%",height:"100%",background:"linear-gradient(90deg,"+t.re+"60,"+t.re+")",borderRadius:2}}/>
+              </div>
+            </div>
+          )):<div style={{fontSize:12,color:t.t3,textAlign:"center",padding:"20px 0"}}>Do check-ins to map weak areas</div>}
+        </div>
+      </div>
+
+      {mocks.length>0&&(
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:18}}>
+          <Lbl t={t}>MOCK HISTORY</Lbl>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {mocks.map((m,i)=>(
+              <div key={i} style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"8px 12px"}}>
+                <div style={{fontSize:10,color:t.ac,fontFamily:"monospace",fontWeight:700}}>{m.test}</div>
+                <div style={{fontSize:18,fontWeight:700,color:t.tx,fontFamily:"monospace"}}>{m.score}</div>
+                <div style={{fontSize:9,color:t.t3,display:"flex",gap:6,marginTop:2}}>
+                  <span style={{color:"#f97316"}}>P:{m.phy}</span>
+                  <span style={{color:"#22d3ee"}}>C:{m.chem}</span>
+                  <span style={{color:"#a78bfa"}}>M:{m.math}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{background:t.bg2,border:"1px solid "+t.cy+"33",borderRadius:12,padding:18}}>
+        <Lbl t={t}>⚡ ZEUS QUICK INSIGHTS</Lbl>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
+          {[
+            pa<=ca&&pa<=ma?"⚡ Physics weakest at "+pa+"%. Prioritise for next 3 days.":null,
+            ca<pa&&ca<ma?"🧪 Chemistry at "+ca+"%. Focus: "+(weak.find(w=>w.sub==="Chemistry")?.ch||"weak topics")+".":null,
+            ma<pa&&ma<ca?"∑ Maths at "+ma+"%. Target "+(weak.find(w=>w.sub==="Mathematics")?.ch||"weak topics")+".":null,
+            imp!==null&&imp>0?"📈 +"+imp+" in latest mock. Keep momentum!":null,
+            imp!==null&&imp<0?"📉 Score dropped "+Math.abs(imp)+". Review before next mock.":null,
+            mocks.length===0?"🎯 Upload first mock in Mock Test tab.":null,
+            !td?"📅 Do today's check-in in AI Mentor tab.":null,
+            weak[0]?"🚨 Most urgent: "+weak[0].ch+" at "+weak[0].v+"% — fix this first.":null,
+            (streak?.n||0)>=3?"🔥 "+streak.n+" day streak! Consistency beats intensity.":null,
+          ].filter(Boolean).slice(0,4).map((tip,i)=>(
+            <div key={i} style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"12px 14px",fontSize:12,color:t.t2,lineHeight:1.6}}>{tip}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AI MENTOR ──
+const CKQ=[
+  {id:"s",icon:"📚",text:"Main study focus today?",opts:["Physics","Chemistry","Mathematics","Mixed","Didn't study"]},
+  {id:"h",icon:"⏱",text:"Hours studied?",opts:["Under 2h","2-3h","3-5h","5-7h","7h+ 🔥"]},
+  {id:"q",icon:"🧠",text:"Understanding quality?",opts:["Clear 90%+","Mostly got it 70%+","Partial 50-65%","Struggled <50%","Only revised"]},
+  {id:"m",icon:"✍",text:"Type of study?",opts:["Theory","Theory+Examples","Practice","PYQs","Full mock"]},
+  {id:"f",icon:"📱",text:"Focus quality?",opts:["100% focused","Good with breaks","Lost 1-2h to phone","Couldn't focus","Burnt out"]},
+  {id:"x",icon:"🎯",text:"Tomorrow mindset?",opts:["Energised","On track","Need to catch up","Need rest","Anxious"]},
+];
+function AITab({prof,mastery,mocks,streak,setSt,t}){
+  const[view,setView]=useState("ck");
+  const[log,setLog]=useState(null);
+  const[qi,setQi]=useState(0);
+  const[ans,setAns]=useState({});
+  const[tasks,setTasks]=useState([]);
+  const[nt,setNt]=useState("");
+  const[plan,setPlan]=useState([]);
+  const[zh,setZh]=useState([]);
+  const[zi,setZi]=useState("");
+  const[zload,setZload]=useState(false);
+  const endR=useRef(null);
+
+  useEffect(()=>{
+    const dl=LS.get(K.d)||[];const at=LS.get(K.tk)||[];
+    const td=dl.find(d=>d.date===tod());
+    if(td){setLog(td);if(td.plan){const sec=td.plan.split(/^## /m).filter(Boolean).map(x=>{const[ti,...b]=x.split("\n");return{ti:ti.trim(),b:b.join("\n").trim()};});setPlan(sec);}setView("done");}
+    setTasks(at.filter(x=>x.date===tod()));
+  },[]);
+  useEffect(()=>{endR.current?.scrollIntoView({behavior:"smooth"});},[zh]);
+
+  function pickA(i){const q=CKQ[qi];const na={...ans,[q.id]:q.opts[i]};setAns(na);setTimeout(()=>{if(qi<CKQ.length-1)setQi(x=>x+1);else setView("tasks");},280);}
+  function addTask(){if(!nt.trim())return;const tk={id:tod()+"-"+Date.now(),text:nt.trim(),done:false,date:tod(),auto:false};setTasks(p=>[...p,tk]);const a=LS.get(K.tk)||[];LS.set(K.tk,[...a,tk]);setNt("");}
+  function togTask(id){setTasks(p=>p.map(x=>x.id===id?{...x,done:!x.done}:x));const a=LS.get(K.tk)||[];LS.set(K.tk,a.map(x=>x.id===id?{...x,done:!x.done}:x));}
+
+  async function genPlan(){
+    setView("planning");
+    const weak=Object.entries(mastery).flatMap(([sub,chs])=>Object.entries(chs||{}).filter(([,v])=>v>0&&v<55).map(([ch,v])=>({sub,ch,v}))).sort((a,b)=>a.v-b.v).slice(0,5);
+    const sys="You are ZEUS, "+prof.name+"'s JEE teacher. Verify all math. Be precise and direct.";
+    const msg="Student: "+prof.name+" | Target: "+prof.target+"/300 | Days to JEE: "+getCD().D+"\nCHECK-IN:\n"+Object.entries(ans).map(([k,v])=>"- "+CKQ.find(q=>q.id===k)?.text+" → "+v).join("\n")+"\nMASTERY: Physics "+avgO(mastery.Physics||{})+"% | Chemistry "+avgO(mastery.Chemistry||{})+"% | Math "+avgO(mastery.Mathematics||{})+"%\nWEAK: "+weak.map(w=>w.ch+"("+w.sub+"):"+w.v+"%").join(", ")+"\nMOCKS: "+mocks.length+"/20 | Latest: "+(mocks[mocks.length-1]?.score||"N/A")+"/300\n\n## 💬 ZEUS SAYS\n(3 direct sentences)\n\n## ⚡ TOMORROW'S TOP 3 TASKS\n1. [Sub]: [Chapter] — [Action] — [Time]\n2. [Sub]: [Chapter] — [Action] — [Time]\n3. [Sub]: [Chapter] — [Action] — [Time]\n\n## 📚 REVISE TONIGHT\n[One formula with math]\n\n## 🎯 THIS WEEK'S TARGET\n[One measurable goal]";
+    try{
+      const raw=await callAI([{role:"user",content:msg}],sys,1000);
+      const sec=raw.split(/^## /m).filter(Boolean).map(x=>{const[ti,...b]=x.split("\n");return{ti:ti.trim(),b:b.join("\n").trim()};});
+      setPlan(sec);
+      const pt=sec.find(s=>s.ti.includes("TOMORROW"))?.b.split("\n").filter(l=>l.match(/^\d+\./)).slice(0,3).map((l,i)=>({id:tod()+"-a"+i,text:l.replace(/^\d+\.\s*/,""),done:false,date:tod(),auto:true}))||[];
+      setTasks(p=>[...p.filter(x=>!x.auto),...pt]);
+      const a=LS.get(K.tk)||[];LS.set(K.tk,[...a.filter(x=>x.date!==tod()||!x.auto),...pt]);
+      const entry={date:tod(),ans,plan:raw,ts:new Date().toISOString()};
+      const dl=LS.get(K.d)||[];LS.set(K.d,[...dl.filter(d=>d.date!==tod()),entry]);setLog(entry);
+      const s=LS.get(K.s)||{n:0,last:""};const yst=new Date();yst.setDate(yst.getDate()-1);const yS=yst.toISOString().slice(0,10);
+      const ns=s.last===yS?{n:s.n+1,last:tod()}:s.last===tod()?s:{n:1,last:tod()};
+      LS.set(K.s,ns);setSt(ns);
+    }catch(e){setPlan([{ti:"Error",b:e.message}]);}
+    setView("done");
+  }
+  async function sendZeus(){
+    const q=zi.trim();if(!q)return;
+    setZh(h=>[...h,{r:"u",text:q}]);setZi("");setZload(true);
+    const sys="You are ZEUS, "+prof.name+"'s JEE teacher. Verify math. Physics "+avgO(mastery.Physics||{})+"% | Chemistry "+avgO(mastery.Chemistry||{})+"% | Math "+avgO(mastery.Mathematics||{})+"%. Latest: "+(mocks[mocks.length-1]?.score||"N/A")+"/300. Days: "+getCD().D+".";
+    try{const r=await callAI([{role:"user",content:q}],sys);setZh(h=>[...h,{r:"z",text:r}]);}
+    catch(e){setZh(h=>[...h,{r:"z",text:"Error: "+e.message}]);}
+    setZload(false);
+  }
+
+  const colors=[t.cy,t.ac,t.gr,t.pu];
+  const curQ=CKQ[qi];
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"flex",gap:6,background:t.bg2,border:"1px solid "+t.bd,borderRadius:10,padding:5}}>
+        {[["ck","📅 Daily Check-in"],["zeus","⚡ Ask ZEUS"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?t.cy+"20":t.bg2,border:"1px solid "+(view===v?t.cy:t.bd),borderRadius:8,padding:10,color:view===v?t.cy:t.t2,fontSize:12,fontWeight:600}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {view==="ck"&&(
+        <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:14}}>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+            <Lbl t={t}>DAILY CHECK-IN</Lbl>
+            {CKQ.map((q,i)=>(
+              <div key={q.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                <div style={{width:20,height:20,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,flexShrink:0,
+                  background:ans[q.id]?t.cy+"22":i===qi?t.ac+"22":t.bg3,
+                  border:"1px solid "+(ans[q.id]?t.cy:i===qi?t.ac:t.bd),
+                  color:ans[q.id]?t.cy:i===qi?t.ac:t.t3}}>
+                  {ans[q.id]?"✓":i===qi?"→":i+1}
+                </div>
+                <span style={{fontSize:11,color:i===qi?t.tx:ans[q.id]?t.cy:t.t3}}>{q.icon} {q.text.slice(0,24)}{q.text.length>24?"...":""}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:22,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+            <div style={{background:t.bg3,borderRadius:2,height:3,marginBottom:18}}>
+              <div style={{width:(qi/CKQ.length*100)+"%",height:"100%",background:"linear-gradient(90deg,"+t.ac+","+t.cy+")",borderRadius:2,transition:"width .3s"}}/>
+            </div>
+            <div style={{fontSize:26,marginBottom:8}}>{curQ.icon}</div>
+            <div style={{fontSize:17,color:t.tx,fontWeight:600,marginBottom:18,lineHeight:1.5}}>{curQ.text}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {curQ.opts.map((opt,i)=>(
+                <button key={i} onClick={()=>pickA(i)}
+                  style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:10,padding:"12px 16px",textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .1s"}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:t.bg3,color:t.t3,flexShrink:0}}>{String.fromCharCode(65+i)}</div>
+                  <span style={{fontSize:13,color:t.t2}}>{opt}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view==="tasks"&&(
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:20}}>
+          <div style={{fontSize:16,fontWeight:600,color:t.tx,marginBottom:6}}>✅ Add Today's Tasks</div>
+          <div style={{fontSize:13,color:t.t2,marginBottom:14}}>Then get ZEUS's plan for tomorrow.</div>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()} placeholder="Add a task..."
+              style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"10px 12px",color:t.tx,fontSize:12,outline:"none"}}/>
+            <button onClick={addTask} style={{background:t.cy,border:"none",borderRadius:8,padding:"10px 14px",color:"#000",fontWeight:700,fontSize:12}}>+</button>
+          </div>
+          <div style={{maxHeight:160,overflowY:"auto",marginBottom:14}}>
+            {tasks.map(tk=>(
+              <div key={tk.id} style={{display:"flex",gap:10,alignItems:"center",background:t.bg3,borderRadius:8,padding:"9px 12px",border:"1px solid "+t.bd,marginBottom:6}}>
+                <button onClick={()=>togTask(tk.id)} style={{width:18,height:18,borderRadius:4,border:"2px solid "+(tk.done?t.cy:t.bd2),background:tk.done?t.cy:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:9,color:"#000"}}>{tk.done&&"✓"}</button>
+                <span style={{fontSize:12,color:tk.done?t.t3:t.t2,textDecoration:tk.done?"line-through":"none"}}>{tk.text}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={genPlan} style={{width:"100%",background:"linear-gradient(135deg,#f97316,#dc2626)",border:"none",borderRadius:12,padding:14,color:"#fff",fontSize:13,fontWeight:800}}>
+            ⚡ GET ZEUS'S PLAN →
+          </button>
+        </div>
+      )}
+
+      {view==="planning"&&(
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:60,textAlign:"center"}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Spin sz={44} c={t.ac}/></div>
+          <div style={{fontFamily:"monospace",fontSize:12,color:t.ac,letterSpacing:2}}>ZEUS CRAFTING YOUR PLAN...</div>
+        </div>
+      )}
+
+      {view==="done"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:t.gr+"12",border:"1px solid "+t.gr+"33",borderRadius:12,padding:14,display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{fontSize:24}}>✅</div>
+            <div>
+              <div style={{fontSize:14,color:t.gr,fontWeight:600}}>Today logged! 🔥 {streak?.n||0} day streak</div>
+              <div style={{fontSize:11,color:t.t3}}>{log?.ts?new Date(log.ts).toLocaleTimeString():""}</div>
+            </div>
+          </div>
+          {plan.map((s,i)=>(
+            <div key={i} style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,borderLeft:"3px solid "+colors[i%colors.length],padding:18}}>
+              <div style={{fontSize:12,color:colors[i%colors.length],fontWeight:700,marginBottom:8}}>{s.ti}</div>
+              <div style={{fontSize:13,color:t.t2,lineHeight:1.85,whiteSpace:"pre-wrap"}}>{s.b}</div>
+            </div>
+          ))}
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <Lbl t={t}>TASKS</Lbl>
+              <span style={{fontSize:11,color:t.cy}}>{tasks.filter(x=>x.done).length}/{tasks.length} done</span>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()} placeholder="Add task..."
+                style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"9px 12px",color:t.tx,fontSize:12,outline:"none"}}/>
+              <button onClick={addTask} style={{background:t.cy+"20",border:"1px solid "+t.cy+"44",borderRadius:8,padding:"9px 12px",color:t.cy,fontWeight:700,fontSize:12}}>+</button>
+            </div>
+            {tasks.map(tk=>(
+              <div key={tk.id} style={{display:"flex",gap:10,alignItems:"center",background:tk.done?t.gr+"10":t.bg3,borderRadius:8,padding:"9px 12px",border:"1px solid "+(tk.done?t.gr+"30":t.bd),marginBottom:6}}>
+                <button onClick={()=>togTask(tk.id)} style={{width:20,height:20,borderRadius:5,border:"2px solid "+(tk.done?t.cy:t.bd2),background:tk.done?t.cy:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:9,color:"#000"}}>{tk.done&&"✓"}</button>
+                <span style={{fontSize:12,color:tk.done?t.t3:t.t2,flex:1,textDecoration:tk.done?"line-through":"none"}}>{tk.text}</span>
+                {tk.auto&&<span style={{fontSize:9,color:t.ac,background:t.ac+"20",padding:"2px 6px",borderRadius:3}}>ZEUS</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view==="zeus"&&(
+        <div style={{display:"grid",gridTemplateColumns:"180px 1fr",gap:14,height:"calc(100vh - 230px)",minHeight:440}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{background:t.bg2,border:"1px solid "+t.ac+"33",borderRadius:12,padding:16,textAlign:"center"}}>
+              <div style={{fontSize:30,marginBottom:6}}>⚡</div>
+              <div style={{fontFamily:"monospace",fontSize:13,color:t.ac,fontWeight:900,letterSpacing:2}}>ZEUS</div>
+              <div style={{fontSize:9,color:t.t3,letterSpacing:2}}>AI TEACHER</div>
+            </div>
+            <button onClick={async()=>{setZh([]);setZload(true);const sys="You are ZEUS, "+prof.name+"'s JEE teacher. Physics "+avgO(mastery.Physics||{})+"% | Chemistry "+avgO(mastery.Chemistry||{})+"% | Math "+avgO(mastery.Mathematics||{})+"%. Latest: "+(mocks[mocks.length-1]?.score||"N/A")+"/300.";try{const r=await callAI([{role:"user",content:"Give me a precise weekly analysis and battle plan based on my data."}],sys,900);setZh([{r:"z",text:r}]);}catch(e){setZh([{r:"z",text:"Error: "+e.message}]);}setZload(false);}}
+              style={{background:"linear-gradient(135deg,"+t.ac+",#dc2626)",border:"none",borderRadius:10,padding:"10px",color:"#fff",fontSize:11,fontWeight:700,letterSpacing:1}}>
+              ⚡ WEEKLY BRIEF
+            </button>
+            <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:10,padding:12}}>
+              <Lbl t={t}>QUICK ASKS</Lbl>
+              {["My weakest chapter?","Explain Rotational Motion","Am I on track?","Strategy for 250+","Electrochemistry basics"].map((q,i)=>(
+                <button key={i} onClick={()=>setZi(q)} style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"1px solid "+t.bd,borderRadius:6,padding:"7px 9px",color:t.t3,fontSize:11,cursor:"pointer",marginBottom:5}}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"10px 16px",borderBottom:"1px solid "+t.bd,display:"flex",gap:8,alignItems:"center"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:t.gr,animation:"pulse 2s infinite"}}/>
+              <span style={{fontSize:9,color:t.t3,letterSpacing:2}}>ZEUS ONLINE</span>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:10}}>
+              {!zh.length&&<div style={{textAlign:"center",marginTop:60}}><div style={{fontSize:34}}>⚡</div><div style={{fontFamily:"monospace",fontSize:10,color:t.t3,marginTop:8}}>ASK ZEUS ANYTHING</div></div>}
+              {zh.map((m,i)=>(
+                <div key={i} style={{display:"flex",flexDirection:"column",alignItems:m.r==="u"?"flex-end":"flex-start"}}>
+                  <div style={{fontSize:9,color:t.t3,marginBottom:2,letterSpacing:1}}>{m.r==="u"?"YOU":"⚡ ZEUS"}</div>
+                  <div style={{maxWidth:"86%",padding:"10px 14px",borderRadius:10,fontSize:13,lineHeight:1.75,whiteSpace:"pre-wrap",
+                    background:m.r==="u"?t.bg3:t.bg,
+                    border:"1px solid "+(m.r==="u"?t.bd:t.ac+"33"),
+                    color:m.r==="u"?t.tx:t.dark?"#fcd34d":"#c2410c"}}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {zload&&<div style={{display:"flex",gap:5,padding:"10px 14px",background:t.bg,border:"1px solid "+t.ac+"33",borderRadius:10,width:"fit-content"}}>
+                {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:t.ac,animation:"pulse 1.2s "+i*.2+"s infinite"}}/>)}
+              </div>}
+              <div ref={endR}/>
+            </div>
+            <div style={{padding:12,borderTop:"1px solid "+t.bd,display:"flex",gap:8}}>
+              <input value={zi} onChange={e=>setZi(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendZeus()} placeholder="Ask ZEUS anything..."
+                style={{flex:1,background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"10px 12px",color:t.tx,fontSize:13,outline:"none"}}/>
+              <button onClick={sendZeus} style={{background:"linear-gradient(135deg,"+t.ac+",#dc2626)",border:"none",borderRadius:8,padding:"10px 14px",color:"#fff",fontSize:12,fontWeight:700}}>⚡</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MOCK TAB ──
+function MockTab({prof,mastery,mocks,setMocks,setMastery,t}){
+  const[phase,setPhase]=useState("idle");
+  const[pdf,setPdf]=useState(null);
+  const[drag,setDrag]=useState(false);
+  const[status,setStatus]=useState("");
+  const[report,setReport]=useState(null);
+  const[qi,setQi]=useState(0);
+  const[ans,setAns]=useState({});
+  const[plan,setPlan]=useState([]);
+  const[err,setErr]=useState("");
+  const fRef=useRef(null);
+  const mn=mocks.length+1;
+  const MQ=[
+    {id:"tm",icon:"⏱",text:"Time management?",opts:["Ran out of time","Rushed at end","Spare time but errors","Time was fine"]},
+    {id:"rs",icon:"🧠",text:"Why did you lose marks?",opts:["Silly errors","Didn't know concept","Knew it, couldn't apply","Too much negative marking"]},
+    {id:"hd",icon:"📚",text:"Hardest subject?",opts:["Physics","Chemistry","Mathematics","All equal"]},
+    {id:"st",icon:"🔍",text:"Attempt strategy?",opts:["Too long on hard Qs","Skipped easy Qs","Good strat bad execution","No strategy"]},
+    {id:"mn",icon:"😤",text:"Mental state?",opts:["Panicked early","Great start stressed later","Calm — knowledge gap","Overconfident"]},
+  ];
+  async function scan(){
+    if(!pdf)return;setPhase("sc");setErr("");
+    try{
+      setStatus("Reading PDF...");
+      const data=await toB64(pdf);
+      setStatus("ZEUS extracting scores...");
+      const prompt='Analyse this JEE mock test PDF. Return ONLY valid JSON with no extra text:\n{"testName":"string","totalScore":0,"physicsScore":0,"chemistryScore":0,"mathScore":0,"physicsCorrect":0,"physicsWrong":0,"physicsUnattempted":0,"chemistryCorrect":0,"chemistryWrong":0,"chemistryUnattempted":0,"mathCorrect":0,"mathWrong":0,"mathUnattempted":0,"topicAccuracy":{"Physics":{"Mechanics":null,"Electrostatics":null,"Thermodynamics":null,"Optics":null,"Modern Physics":null},"Chemistry":{"Organic":null,"Inorganic":null,"Physical":null,"Electrochemistry":null},"Mathematics":{"Calculus":null,"Algebra":null,"Probability":null}},"percentile":null}\nExtract exact numbers. Use null if not found.';
+      const raw=await callAIPDF(data,prompt);
+      const clean=raw.replace(/```json|```/g,"").trim();
+      const d=JSON.parse(clean);
+      if(typeof d.totalScore!=="number")throw new Error("Score not found in PDF");
+      setReport(d);setPhase("mcq");setQi(0);setAns({});
+    }catch(e){setErr("Error: "+e.message);setPhase("idle");}
+  }
+  function pickQ(i){const q=MQ[qi];const na={...ans,[q.id]:q.opts[i]};setAns(na);setTimeout(()=>{if(qi<MQ.length-1)setQi(x=>x+1);else build(na);},280);}
+  async function build(fa){
+    setPhase("bl");
+    const sys="You are ZEUS, "+prof.name+"'s JEE teacher. Verify all maths.";
+    const neg=(report.physicsWrong||0)+(report.chemistryWrong||0)+(report.mathWrong||0);
+    const msg="MOCK #"+mn+": Total "+report.totalScore+"/300"+(report.percentile?" | "+report.percentile+"%ile":"")+"\nPhysics "+report.physicsScore+"/100 ✓"+(report.physicsCorrect||"?")+" ✗"+(report.physicsWrong||"?")+"\nChemistry "+report.chemistryScore+"/100 ✓"+(report.chemistryCorrect||"?")+" ✗"+(report.chemistryWrong||"?")+"\nMath "+report.mathScore+"/100 ✓"+(report.mathCorrect||"?")+" ✗"+(report.mathWrong||"?")+"\nNegative marks: ~"+neg+"\n\nSELF-ASSESSMENT:\n"+MQ.map(q=>fa[q.id]?"- "+q.text+" → "+fa[q.id]:null).filter(Boolean).join("\n")+"\n\n## 🔬 ROOT CAUSE ANALYSIS\n## ⚡ 3 CRITICAL FIXES\n## 📅 7-DAY STUDY PLAN\n## 🎯 TOP 5 PRIORITY CHAPTERS\n## 🏁 TARGET FOR MOCK #"+(mn+1);
+    try{
+      const raw=await callAI([{role:"user",content:msg}],sys,2000);
+      const nm={test:"M"+mn,score:report.totalScore,phy:report.physicsScore,chem:report.chemistryScore,math:report.mathScore,date:tod()};
+      const nm2=[...mocks,nm];LS.set(K.mk,nm2);setMocks(nm2);
+      if(report.topicAccuracy){
+        const nM=JSON.parse(JSON.stringify(mastery));
+        Object.entries(report.topicAccuracy).forEach(([sub,chs])=>{
+          if(!nM[sub])nM[sub]={};
+          Object.entries(chs||{}).forEach(([ch,val])=>{if(val!==null&&val!==undefined)nM[sub][ch]=Math.round(((nM[sub][ch]||50)*.35+val*.65));});
+        });
+        LS.set(K.m,nM);setMastery(nM);
+      }
+      const sec=raw.split(/^## /m).filter(Boolean).map(x=>{const[ti,...b]=x.split("\n");return{ti:ti.trim(),b:b.join("\n").trim()};});
+      setPlan(sec);setPhase("done");
+    }catch(e){setPlan([{ti:"Error",b:e.message}]);setPhase("done");}
+  }
+  function reset(){setPhase("idle");setPdf(null);setReport(null);setAns({});setQi(0);setPlan([]);setErr("");}
+  const curQ=MQ[qi];
+  const sc=[t.ac,t.re,t.cy,t.gr,t.pu,"#fbbf24"];
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <Lbl t={t}>MOCK SERIES PROGRESS</Lbl>
+          <div style={{fontFamily:"monospace",fontSize:18,color:t.cy}}>{mocks.length}<span style={{fontSize:10,color:t.t3}}>/20</span></div>
+        </div>
+        <div style={{background:t.bg3,borderRadius:3,height:6,overflow:"hidden",marginBottom:8}}>
+          <div style={{width:(mocks.length/20*100)+"%",height:"100%",background:"linear-gradient(90deg,#0891b2,"+t.cy+")",borderRadius:3,transition:"width .5s"}}/>
+        </div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+          {Array.from({length:20}).map((_,i)=>(
+            <div key={i} title={mocks[i]?mocks[i].test+": "+mocks[i].score+"/300":""} style={{width:12,height:12,borderRadius:"50%",background:i<mocks.length?t.cy:i===mocks.length?t.ac:t.bg3}}/>
+          ))}
+        </div>
+      </div>
+
+      {phase==="idle"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{background:t.bg2,border:"1px solid "+t.cy+"44",borderRadius:14,padding:18}}>
+              <div style={{fontSize:20,marginBottom:8}}>🎓</div>
+              <div style={{fontFamily:"monospace",fontSize:10,color:t.cy,letterSpacing:1,marginBottom:4}}>MOCK DEBRIEF · M{mn}</div>
+              <div style={{fontSize:12,color:t.t2,lineHeight:1.8}}>Upload PDF → 5 MCQs → 7-day battle plan. Works with Examgoal, NTA, Allen formats.</div>
+            </div>
+            <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
+              onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f?.type==="application/pdf"){setPdf(f);setErr("");}else setErr("PDF only");}}
+              onClick={()=>fRef.current?.click()}
+              style={{border:"2px dashed "+(drag?t.cy:pdf?t.cy+"80":t.bd),borderRadius:12,padding:"22px 18px",textAlign:"center",cursor:"pointer",background:t.bg3}}>
+              <input ref={fRef} type="file" accept=".pdf" onChange={e=>{const f=e.target.files[0];if(f){setPdf(f);setErr("");}}} style={{display:"none"}}/>
+              {pdf?(<><div style={{fontSize:22,marginBottom:4}}>✅</div><div style={{fontSize:12,color:t.cy,fontWeight:600}}>{pdf.name}</div></>):(
+                <><div style={{fontSize:28,marginBottom:6}}>📋</div><div style={{fontSize:13,color:t.t2}}>Tap to upload Mock #{mn} PDF</div></>
+              )}
+            </div>
+            {err&&<div style={{fontSize:12,color:t.re,background:t.re+"15",border:"1px solid "+t.re+"30",borderRadius:8,padding:"10px 12px"}}>{err}</div>}
+            <button disabled={!pdf} onClick={scan} style={{background:pdf?"linear-gradient(135deg,#22d3ee,#0891b2)":"#374151",border:"none",borderRadius:12,padding:14,color:pdf?"#000":"#6b7280",fontSize:13,fontWeight:800}}>
+              ⚡ SCAN AND ANALYSE →
+            </button>
+          </div>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+            <Lbl t={t}>PREVIOUS MOCKS</Lbl>
+            {mocks.length>0?[...mocks].reverse().slice(0,6).map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:i>0?"1px solid "+t.bd:undefined}}>
+                <span style={{fontFamily:"monospace",fontSize:12,color:t.ac,fontWeight:700}}>{m.test}</span>
+                <span style={{fontSize:13,fontWeight:700,color:t.tx}}>{m.score}/300</span>
+                <div style={{display:"flex",gap:8}}>
+                  {[["P",m.phy,"#f97316"],["C",m.chem,"#22d3ee"],["M",m.math,"#a78bfa"]].map(([l,v,c])=>(
+                    <span key={l} style={{fontSize:9,color:c,fontFamily:"monospace"}}>{l}:{v}</span>
+                  ))}
+                </div>
+              </div>
+            )):<div style={{fontSize:12,color:t.t3,textAlign:"center",padding:"30px 0"}}>No mocks yet.</div>}
+          </div>
+        </div>
+      )}
+
+      {(phase==="sc"||phase==="bl")&&(
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:60,textAlign:"center"}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Spin sz={44} c={t.cy}/></div>
+          <div style={{fontFamily:"monospace",fontSize:11,color:t.cy,letterSpacing:2,marginBottom:8}}>
+            {phase==="sc"?"ZEUS READING REPORT":"BUILDING YOUR PLAN"}
+          </div>
+          <div style={{fontSize:12,color:t.t3}}>{status}</div>
+        </div>
+      )}
+
+      {phase==="mcq"&&curQ&&(
+        <div style={{display:"grid",gridTemplateColumns:"210px 1fr",gap:14}}>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+            <Lbl t={t}>EXTRACTED</Lbl>
+            <div style={{fontFamily:"monospace",fontSize:24,color:t.ac,fontWeight:900}}>{report?.totalScore}/300</div>
+            <div style={{fontSize:10,color:t.t3,marginBottom:10}}>{report?.testName}</div>
+            {[["Physics",report?.physicsScore,"#f97316"],["Chemistry",report?.chemistryScore,"#22d3ee"],["Math",report?.mathScore,"#a78bfa"]].map(([s,v,c])=>(
+              <div key={s} style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+                <span style={{fontSize:12,color:t.t2}}>{s}</span>
+                <span style={{fontFamily:"monospace",fontSize:12,color:c,fontWeight:700}}>{v}/100</span>
+              </div>
+            ))}
+            <div style={{marginTop:10,borderTop:"1px solid "+t.bd,paddingTop:10}}>
+              {MQ.map((q,i)=>(
+                <div key={q.id} style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
+                  <div style={{width:18,height:18,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,flexShrink:0,
+                    background:ans[q.id]?t.cy+"22":i===qi?t.ac+"22":t.bg3,
+                    border:"1px solid "+(ans[q.id]?t.cy:i===qi?t.ac:t.bd),
+                    color:ans[q.id]?t.cy:i===qi?t.ac:t.t3}}>
+                    {ans[q.id]?"✓":i===qi?"→":i+1}
+                  </div>
+                  <span style={{fontSize:10,color:i===qi?t.tx:ans[q.id]?t.cy:t.t3}}>{q.icon} {q.text.slice(0,20)}...</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:22,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+            <div style={{background:t.bg3,borderRadius:2,height:3,marginBottom:18}}>
+              <div style={{width:(qi/MQ.length*100)+"%",height:"100%",background:"linear-gradient(90deg,"+t.pu+","+t.cy+")",borderRadius:2,transition:"width .3s"}}/>
+            </div>
+            <div style={{fontSize:24,marginBottom:8}}>{curQ.icon}</div>
+            <div style={{fontSize:16,color:t.tx,fontWeight:600,marginBottom:18,lineHeight:1.5}}>{curQ.text}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {curQ.opts.map((opt,i)=>(
+                <button key={i} onClick={()=>pickQ(i)}
+                  style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:10,padding:"12px 16px",textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:t.bg3,color:t.t3,flexShrink:0}}>{String.fromCharCode(65+i)}</div>
+                  <span style={{fontSize:13,color:t.t2}}>{opt}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {phase==="done"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:t.gr+"12",border:"1px solid "+t.gr+"33",borderRadius:12,padding:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontFamily:"monospace",fontSize:10,color:t.gr,letterSpacing:2}}>M{mn} PLAN READY ✅</div>
+              <div style={{fontSize:11,color:t.t3,marginTop:2}}>{report?.totalScore}/300 · Mastery updated</div>
+            </div>
+            <button onClick={reset} style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:8,padding:"8px 12px",color:t.t2,fontSize:11}}>+ NEW</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+            {[{l:"TOTAL",v:report?.totalScore,c:t.ac},{l:"PHY",v:report?.physicsScore,c:"#f97316"},{l:"CHEM",v:report?.chemistryScore,c:"#22d3ee"},{l:"MATH",v:report?.mathScore,c:"#a78bfa"}].map((x,i)=>(
+              <div key={i} style={{background:t.bg2,border:"1px solid "+x.c+"33",borderRadius:10,padding:"12px 14px",borderLeft:"3px solid "+x.c,textAlign:"center"}}>
+                <div style={{fontSize:9,color:t.t3,letterSpacing:1,marginBottom:3}}>{x.l}</div>
+                <div style={{fontFamily:"monospace",fontSize:22,color:x.c,fontWeight:700}}>{x.v}</div>
+              </div>
+            ))}
+          </div>
+          {plan.map((s,i)=>(
+            <div key={i} style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,borderLeft:"3px solid "+sc[i%sc.length],padding:16}}>
+              <div style={{fontSize:12,color:sc[i%sc.length],fontWeight:700,marginBottom:8}}>{s.ti}</div>
+              <div style={{fontSize:13,color:t.t2,lineHeight:1.85,whiteSpace:"pre-wrap"}}>{s.b}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PROGRESS ──
+function Progress({mastery,mocks,t}){
+  const[sub,setSub]=useState("Physics");
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+        {Object.keys(ALL_CH).map(s=>(
+          <div key={s} style={{background:t.bg2,border:"1px solid "+SC[s]+"33",borderRadius:12,padding:"13px 15px",borderLeft:"3px solid "+SC[s]}}>
+            <div style={{fontSize:9,color:t.t3,letterSpacing:2,marginBottom:3}}>{s.toUpperCase()}</div>
+            <div style={{fontFamily:"monospace",fontSize:24,color:SC[s],fontWeight:700}}>{avgO(mastery[s]||{})}%</div>
+            <div style={{fontSize:10,color:t.t3}}>{Object.values(mastery[s]||{}).filter(v=>v>0).length} chapters mapped</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            {Object.keys(ALL_CH).map(s=>(
+              <button key={s} onClick={()=>setSub(s)} style={{flex:1,background:sub===s?SC[s]+"22":t.bg3,border:"1px solid "+(sub===s?SC[s]:t.bd),borderRadius:8,padding:"7px 10px",fontSize:11,color:sub===s?SC[s]:t.t2,fontWeight:600}}>
+                {SI[s]} {s.slice(0,4)}
+              </button>
+            ))}
+          </div>
+          <div style={{maxHeight:340,overflowY:"auto"}}>
+            {ALL_CH[sub].map(ch=>{
+              const v=mastery[sub]?.[ch]||0;
+              return <PBar key={ch} label={ch} val={v} color={v>0?SC[sub]:t.bd2} t={t}/>;
+            })}
+          </div>
+        </div>
+        <div style={{background:t.bg2,border:"1px solid "+t.bd,borderRadius:12,padding:16}}>
+          <Lbl t={t}>RECENT MOCKS</Lbl>
+          {mocks.length>0?[...mocks].reverse().slice(0,8).map((m,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:i>0?"1px solid "+t.bd:undefined}}>
+              <span style={{fontFamily:"monospace",fontSize:12,color:t.ac,fontWeight:700}}>{m.test}</span>
+              <span style={{fontSize:13,fontWeight:700,color:t.tx}}>{m.score}/300</span>
+              <div style={{display:"flex",gap:8}}>
+                {[["P",m.phy,"#f97316"],["C",m.chem,"#22d3ee"],["M",m.math,"#a78bfa"]].map(([l,v,c])=>(
+                  <span key={l} style={{fontSize:9,color:c,fontFamily:"monospace"}}>{l}:{v}</span>
+                ))}
+              </div>
+            </div>
+          )):<div style={{fontSize:12,color:t.t3,textAlign:"center",padding:"30px 0"}}>No mocks yet.</div>}
+          <div style={{marginTop:16,borderTop:"1px solid "+t.bd,paddingTop:12}}>
+            <Lbl t={t}>SUBJECT OVERVIEW</Lbl>
+            {Object.keys(ALL_CH).map(s=>{
+              const v=avgO(mastery[s]||{});
+              return(
+                <div key={s} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:12,color:t.t2}}>{SI[s]} {s}</span>
+                    <span style={{fontSize:12,color:SC[s],fontFamily:"monospace",fontWeight:700}}>{v}%</span>
+                  </div>
+                  <div style={{background:t.bg3,borderRadius:3,height:6}}>
+                    <div style={{width:v+"%",height:"100%",borderRadius:3,background:"linear-gradient(90deg,"+SC[s]+"60,"+SC[s]+")",transition:"width .8s"}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ROOT APP ──
+function App(){
+  const[dark,setDark]=useState(()=>LS.get(K.dk)!==false);
+  const[screen,setScreen]=useState("load");
+  const[prof,setProf]=useState(null);
+  const[mastery,setMastery]=useState({});
+  const[chs,setChs]=useState({Physics:[],Chemistry:[],Mathematics:[]});
+  const[mocks,setMocks]=useState([]);
+  const[streak,setSt]=useState({n:0,last:""});
+  const[tab,setTab]=useState("dash");
+  const t={...TH(dark),dark};
+
+  useEffect(()=>{
+    document.body.style.background=t.bg;
+    document.body.style.color=t.tx;
+  },[dark]);
+
+  useEffect(()=>{
+    try{
+      const p=LS.get(K.p);
+      if(!p){setScreen("welcome");return;}
+      setProf(p);
+      const ob=LS.get(K.ob);
+      if(!ob?.done){setScreen("ob_ch");return;}
+      setMastery(LS.get(K.m)||{});
+      setChs(LS.get(K.ch)||{Physics:[],Chemistry:[],Mathematics:[]});
+      setMocks(LS.get(K.mk)||[]);
+      setSt(LS.get(K.s)||{n:0,last:""});
+      setScreen("login");
+    }catch(e){setScreen("welcome");}
+  },[]);
+
+  const tog=()=>{const v=!dark;setDark(v);LS.set(K.dk,v);};
+  const TABS=[{id:"dash",l:"🏠 Dashboard"},{id:"ai",l:"🎓 AI Mentor"},{id:"mock",l:"📋 Mock Test"},{id:"prog",l:"📊 Progress"}];
+
+  if(screen==="load")return(
+    <div style={{minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <Spin sz={36} c={t.cy}/>
+    </div>
+  );
+  if(screen==="welcome")return <Welcome onS={()=>setScreen("reg")} onL={()=>{const p=LS.get(K.p);if(p){setProf(p);setScreen(LS.get(K.ob)?.done?"login":"ob_ch");}}} t={t}/>;
+  if(screen==="reg")return <Register onDone={p=>{setProf(p);setScreen("ob_ch");}} t={t}/>;
+  if(screen==="login"&&prof)return <Login prof={prof} onOK={()=>setScreen("app")} t={t}/>;
+  if(screen==="ob_ch"&&prof)return <ObCh prof={prof} onDone={s=>{setChs(s);setScreen("ob_pyq");}} t={t}/>;
+  if(screen==="ob_pyq"&&prof)return <ObPYQ prof={prof} chs={chs} onDone={m=>{setMastery(m);const p=LS.get(K.p);if(p)setProf(p);setMocks(LS.get(K.mk)||[]);setSt(LS.get(K.s)||{n:0,last:""});setScreen("login");}} t={t}/>;
+
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,color:t.tx}}>
+      <div style={{borderBottom:"1px solid "+t.bd,background:t.bg+"f0",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:100,padding:"0 18px"}}>
+        <div style={{maxWidth:1200,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:50}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:28,height:28,borderRadius:6,background:"linear-gradient(135deg,#f97316,#dc2626)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,boxShadow:"0 0 10px rgba(249,115,22,.4)"}}>⚔</div>
+            <div>
+              <div style={{fontFamily:"monospace",fontSize:10,fontWeight:900,letterSpacing:2,color:t.ac}}>JEE COMMAND CENTER</div>
+              <div style={{fontSize:8,color:t.t3,letterSpacing:2}}>{prof?.name?.toUpperCase()} · {streak.n} DAY STREAK 🔥</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={tog} style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:16,padding:"5px 10px",fontSize:11,color:t.t2}}>{dark?"☀️ Light":"🌙 Dark"}</button>
+            <button onClick={()=>setScreen("login")} style={{background:t.bg3,border:"1px solid "+t.bd,borderRadius:6,padding:"5px 8px",fontSize:11,color:t.t3}}>🔒</button>
+          </div>
+        </div>
+      </div>
+      <div style={{borderBottom:"1px solid "+t.bd,padding:"0 18px",background:t.bg,overflowX:"auto"}}>
+        <div style={{maxWidth:1200,margin:"0 auto",display:"flex",minWidth:"max-content"}}>
+          {TABS.map(tb=>(
+            <button key={tb.id} onClick={()=>setTab(tb.id)} style={{padding:"11px 16px",fontSize:11,letterSpacing:1,fontWeight:600,background:"none",border:"none",color:tab===tb.id?t.ac:t.t3,borderBottom:tab===tb.id?"2px solid "+t.ac:"2px solid transparent",whiteSpace:"nowrap",transition:"all .2s"}}>
+              {tb.l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:18}}>
+        {tab==="dash"&&<Dashboard prof={prof} mastery={mastery} mocks={mocks} streak={streak} t={t}/>}
+        {tab==="ai"&&<AITab prof={prof} mastery={mastery} mocks={mocks} streak={streak} setSt={setSt} t={t}/>}
+        {tab==="mock"&&<MockTab prof={prof} mastery={mastery} mocks={mocks} setMocks={setMocks} setMastery={setMastery} t={t}/>}
+        {tab==="prog"&&<Progress mastery={mastery} mocks={mocks} t={t}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+</script>
+</body>
+</html>
